@@ -36,7 +36,7 @@
 | Charts | Recharts | Score breakdowns, distribution plots. |
 | Orbital data | Space-Track (full catalog) | ~34k real on-orbit objects via the Space-Track GP API, refreshed nightly by a Vercel cron. Physical attrs are heuristic estimates by object class (curated overrides for ~24 showcase objects). See §11. |
 | 3D globe | CesiumJS + Resium + `satellite.js` (v5) | `/globe` hero page; client-side SGP4 propagation. Needs `NEXT_PUBLIC_CESIUM_ION_TOKEN`. See §12. |
-| AI | `@anthropic-ai/sdk` → DeepSeek | Explanations use DeepSeek (`deepseek-v4-flash` — faster first token than the `pro` reasoning model) via its **Anthropic-compatible** endpoint (`https://api.deepseek.com/anthropic`). We keep the Anthropic SDK and just set `baseURL` + model, so no new deps. `ANTHROPIC_API_KEY` holds the DeepSeek key; override with `AI_MODEL`. Note: DeepSeek ignores `cache_control`, image/doc/tool content, and `anthropic-beta/version` headers — none of which we use. |
+| AI | `@anthropic-ai/sdk` → DeepSeek | Multi-mode analysis (`/api/ai/analyze`) on `deepseek-v4-flash` via DeepSeek's **Anthropic-compatible** endpoint (`https://api.deepseek.com/anthropic`). Centralized in `lib/ai/client.ts` (we keep the Anthropic SDK + set `baseURL`, so no new deps). `ANTHROPIC_API_KEY` holds the DeepSeek key; override model with `AI_MODEL`. Effort tiers (off/high/max) modeled as token budgets. Note: DeepSeek ignores `cache_control`, image/doc/tool content, and `anthropic-beta/version` headers — none of which we use. |
 | Deploy | Vercel | Free tier covers the demo. |
 
 **Do not add:** auth, payments, websockets, Redis, Stripe, anything not in the table above. Resist scope creep — this is a pitch tool.
@@ -73,7 +73,7 @@ orbit-reclaim/
 │   │   ├── schema.ts             # Drizzle schema
 │   │   ├── client.ts             # connection
 │   │   └── seed.ts               # loads data/sample-debris.json
-│   └── claude.ts                 # Anthropic SDK wrapper
+│   └── ai/                       # DeepSeek client, prompts, data, methodology RAG
 ├── data/
 │   └── sample-debris.json        # ~30 seed objects
 ├── tests/
@@ -285,28 +285,42 @@ If a formula change breaks these, update both the test and the rationale comment
 
 ---
 
-## 7. AI explanation layer
+## 7. AI analysis layer (PHASE-AI-V2)
 
-`POST /api/explain` accepts:
+`POST /api/ai/analyze` is the single multi-mode endpoint (replaces the old
+`/api/explain`). It accepts a typed, mode-discriminated body:
 
 ```typescript
-{
-  objectId: string;
-  mode: 'score_explanation' | 'persona_brief' | 'comparison';
-  persona?: 'operator' | 'insurer' | 'agency' | 'removal_provider';
-  comparisonIds?: string[];  // for mode='comparison'
-}
+| { mode: 'explain';          objectId: string }
+| { mode: 'persona-brief';    objectId: string; persona: Persona }
+| { mode: 'comparison';       objectIds: string[]; criteria?; persona? }
+| { mode: 'scenario';         scenario: 'fcc-all-leo' | 'adr-cost-5x-drop' | 'geo-deorbit-mandate' | 'envisat-removed' }
+| { mode: 'what-if';          objectId: string; overrides: Record<string, unknown> }
+| { mode: 'pitch';            objectId: string; audience?: 'investor' | 'customer' }
+| { mode: 'catalog-analysis'; question: string }
 ```
 
-The route loads the object(s), runs the scoring, and calls Claude with a system prompt like:
+The route loads + scores the object(s) (`lib/ai/data.ts`), builds a
+mode-specific prompt (`lib/ai/prompts.ts`) seeded with the full ScoreResult
+(sub-scores + USD economics + confidence), and streams DeepSeek's reply as
+plain text. Each prompt injects the **methodology index** (`lib/ai/methodology.ts`)
+and instructs the model to cite sections as `(per §X.Y.Z)`; `components/AiOutput.tsx`
+linkifies those to `/methodology#…`. RAG is prompt-injection (no tool-calling),
+which DeepSeek's Anthropic-compatible endpoint supports cleanly.
 
-> You are an analyst at Orbit Reclaim, a decision-support service for the space debris ecosystem. Given an object's orbital parameters and its three scores with factor breakdowns, write a plain-language explanation in 120–180 words. Lead with the headline finding. Cite specific factors and numbers from the breakdown — never invent values. End with one recommended action for the {persona}.
+**Reasoning effort** (`lib/ai/client.ts` `effortParams`): modeled as a token
+budget — `off` (tactical briefs), `high` (comparison/scenario/what-if/pitch),
+`max` (catalog-analysis). The Anthropic-compatible endpoint doesn't reliably
+expose OpenAI-style `reasoning_effort`, so effort = budget for now.
 
-**Streaming:** use the SDK's streaming API and render tokens as they arrive. The `ExplainPanel` component should show a typewriter effect over the dark background — feels appropriately mission-control.
+**Streaming:** plain-text chunks rendered with a typewriter cursor in
+`ExplainPanel` / `AiOutput`.
 
-**Model:** `deepseek-v4-flash` (default in `lib/claude.ts`; override via `AI_MODEL`) via DeepSeek's Anthropic-compatible endpoint (overrides the original Claude choice — see §2). `flash` is used over `pro` for a faster first token (pro reasons before answering). Configured with `ANTHROPIC_BASE_URL=https://api.deepseek.com/anthropic`. Keep responses to ~200 words max via system prompt.
+**Model:** `deepseek-v4-flash` (default in `lib/ai/client.ts`; override via
+`AI_MODEL`) via DeepSeek's Anthropic-compatible endpoint
+(`ANTHROPIC_BASE_URL=https://api.deepseek.com/anthropic`, `ANTHROPIC_API_KEY`).
 
-**Cost guard:** cache explanations by `(objectId, mode, persona)` in memory (no DB) for the session.
+**Cost guard:** `ExplainPanel` caches by `(target, mode, persona)` in memory.
 
 ---
 
@@ -337,7 +351,7 @@ The route loads the object(s), runs the scoring, and calls Claude with a system 
 - [x] Catalogue loads the full real catalog (~34k objects), paginated, sortable on all scores.
 - [x] Filter panel narrows by altitude band, jurisdiction, type, mission status (DB-side).
 - [x] Object detail page shows all orbital params, all three score breakdowns with visible weights, and an AI-generated brief.
-- [ ] AI explanation streams in <3 s to first token. *(deepseek-v4-pro reasons first; ~20–60s. Switch `AI_MODEL=deepseek-v4-flash` for speed.)*
+- [x] AI explanation streams in <3 s to first token (`deepseek-v4-flash`, off-effort).
 - [x] Scoring tests pass.
 - [x] Deployed to Vercel with a shareable URL (https://orbit-reclaim.vercel.app/).
 - [x] Brand: a non-engineer looking at it for 5 s says "this looks like space-tech."

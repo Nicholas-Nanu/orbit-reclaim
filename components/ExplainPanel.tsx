@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useRef, useState } from "react";
+import { AiOutput } from "./AiOutput";
 
 type Persona = "operator" | "insurer" | "agency" | "removal_provider";
 
@@ -36,7 +37,7 @@ export function ExplainPanel(props: Props) {
   const target = isComparison
     ? (props.comparisonIds as string[]).join(",")
     : (props.objectId as string);
-  const mode = isComparison ? "comparison" : "persona_brief";
+  const mode = isComparison ? "comparison" : "persona-brief";
   const title = isComparison ? "AI Comparison" : "AI Briefing";
   const cta = isComparison ? "Compare these objects" : "Explain this score";
 
@@ -67,10 +68,15 @@ export function ExplainPanel(props: Props) {
 
       try {
         const body = isComparison
-          ? { mode, comparisonIds: props.comparisonIds, persona: p }
+          ? {
+              mode,
+              objectIds: props.comparisonIds,
+              persona: p,
+              criteria: "composite" as const,
+            }
           : { mode, objectId: props.objectId, persona: p };
 
-        const res = await fetch("/api/explain", {
+        const res = await fetch("/api/ai/analyze", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(body),
@@ -162,12 +168,7 @@ export function ExplainPanel(props: Props) {
         )}
 
         {(status === "streaming" || status === "done") && (
-          <p className="whitespace-pre-wrap text-sm leading-relaxed text-text">
-            {text}
-            {status === "streaming" && (
-              <span className="ml-0.5 inline-block h-4 w-1.5 animate-pulse bg-gold align-text-bottom" />
-            )}
-          </p>
+          <AiOutput text={text} streaming={status === "streaming"} />
         )}
 
         {status === "error" && (
