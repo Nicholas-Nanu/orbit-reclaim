@@ -1,2 +1,13 @@
-// Phase 3: Typed Drizzle db client (CLAUDE.md §3)
-export {};
+import { drizzle } from "drizzle-orm/node-postgres";
+import { Pool } from "pg";
+import * as schema from "./schema";
+
+const connectionString = process.env.DATABASE_URL;
+
+if (!connectionString) {
+  throw new Error("DATABASE_URL is not set. Add it to .env.local.");
+}
+
+const pool = new Pool({ connectionString });
+
+export const db = drizzle(pool, { schema });

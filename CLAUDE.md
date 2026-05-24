@@ -31,7 +31,7 @@
 | --- | --- | --- |
 | Framework | Next.js 14 (App Router) | TypeScript, strict mode. |
 | Styling | Tailwind CSS | Custom theme tokens (see §6). |
-| DB | Postgres (Supabase hosted) | Using Supabase (Postgres) via its connected MCP instead of Neon — same Postgres, already wired into this workspace. `DATABASE_URL` points at the Supabase pooled connection. |
+| DB | Postgres (Supabase hosted) | Using Supabase (Postgres) via its connected MCP instead of Neon — same Postgres, already wired into this workspace. Project: `orbit-reclaim`, ref `czjibddehtncwrxmbuwa`, region `eu-west-1`. Schema + seed applied via the MCP (`apply_migration` / `execute_sql`); `npm run db:push`/`db:seed` work locally once `DATABASE_URL` has the DB password. |
 | ORM | Drizzle | Lighter than Prisma, SQL-native, fast iteration. |
 | Charts | Recharts | Score breakdowns, distribution plots. |
 | AI | `@anthropic-ai/sdk` | Claude Sonnet 4.5 for explanations. |

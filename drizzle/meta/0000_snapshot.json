@@ -1,0 +1,178 @@
+{
+  "id": "2c27bc69-b42a-4e77-8312-6b0d9916564c",
+  "prevId": "00000000-0000-0000-0000-000000000000",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {
+    "public.debris_objects": {
+      "name": "debris_objects",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "type": {
+          "name": "type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "launch_year": {
+          "name": "launch_year",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "launch_country": {
+          "name": "launch_country",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "jurisdiction": {
+          "name": "jurisdiction",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "mass_kg": {
+          "name": "mass_kg",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "cross_section_m2": {
+          "name": "cross_section_m2",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "intact": {
+          "name": "intact",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "material_class": {
+          "name": "material_class",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "altitude_km": {
+          "name": "altitude_km",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "inclination_deg": {
+          "name": "inclination_deg",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "eccentricity": {
+          "name": "eccentricity",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "estimated_years_to_decay": {
+          "name": "estimated_years_to_decay",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "mission_status": {
+          "name": "mission_status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "end_of_life_year": {
+          "name": "end_of_life_year",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "has_propellant": {
+          "name": "has_propellant",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "has_thrusters": {
+          "name": "has_thrusters",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "conjunctions_30d": {
+          "name": "conjunctions_30d",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "neighbors_within_50km": {
+          "name": "neighbors_within_50km",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "delta_v_to_reach_kms": {
+          "name": "delta_v_to_reach_kms",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "catalog_source": {
+          "name": "catalog_source",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'simulated'"
+        },
+        "last_updated": {
+          "name": "last_updated",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    }
+  },
+  "enums": {},
+  "schemas": {},
+  "sequences": {},
+  "roles": {},
+  "policies": {},
+  "views": {},
+  "_meta": {
+    "columns": {},
+    "schemas": {},
+    "tables": {}
+  }
+}
