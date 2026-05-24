@@ -44,3 +44,37 @@ export function ScoreBadge({
     </span>
   );
 }
+
+export type Confidence = "high" | "medium" | "low";
+
+/**
+ * Confidence flag (METHODOLOGY §7). High confidence renders nothing (the
+ * default, uncluttered state); medium/low get an explicit badge so a high
+ * score on partial/estimated data is never mistaken for authoritative.
+ */
+export function ConfidenceBadge({
+  confidence,
+  className = "",
+}: {
+  confidence: Confidence;
+  className?: string;
+}) {
+  if (confidence === "high") return null;
+  const low = confidence === "low";
+  return (
+    <span
+      title={
+        low
+          ? "Low confidence — a critical input is missing or simulated"
+          : "Medium confidence — some inputs are estimated or stale"
+      }
+      className={`inline-flex items-center gap-1 rounded-sm border px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-wider ${
+        low
+          ? "border-scoreHigh/40 bg-scoreHigh/10 text-scoreHigh"
+          : "border-border bg-white/5 text-muted"
+      } ${className}`}
+    >
+      {low ? "⚠ low confidence" : "~ est. data"}
+    </span>
+  );
+}

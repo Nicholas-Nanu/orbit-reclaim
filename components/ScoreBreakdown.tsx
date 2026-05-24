@@ -9,7 +9,7 @@ import {
   YAxis,
 } from "recharts";
 import type { ScoreResult } from "@/lib/scoring";
-import { scoreTextClass } from "./ScoreBadge";
+import { ConfidenceBadge, scoreTextClass } from "./ScoreBadge";
 
 // On-brand, distinguishable segment colors (gold → orange → amber → muted).
 const PALETTE = ["#ffe11f", "#ff6b35", "#e0a82e", "#9a8a3a", "#6b7280", "#9ca3af"];
@@ -49,15 +49,19 @@ export function ScoreBreakdown({
   ];
   const labels = new Map(result.factors.map((f) => [f.name, f.label]));
   const colorOf = (i: number) => PALETTE[i % PALETTE.length];
+  const lowConf = result.confidence === "low";
 
   return (
     <div className="rounded-sm border border-border bg-surface">
       <div className="flex items-baseline justify-between border-b border-border px-4 py-3">
-        <h3 className="font-mono text-xs uppercase tracking-widest text-muted">
-          {title}
-        </h3>
+        <div className="flex items-center gap-2">
+          <h3 className="font-mono text-xs uppercase tracking-widest text-muted">
+            {title}
+          </h3>
+          <ConfidenceBadge confidence={result.confidence} />
+        </div>
         <span
-          className={`font-mono text-3xl font-semibold tabular-nums ${scoreTextClass(result.score)}`}
+          className={`font-mono text-3xl font-semibold tabular-nums ${scoreTextClass(result.score)} ${lowConf ? "opacity-60" : ""}`}
         >
           {result.score.toFixed(1)}
         </span>
@@ -72,10 +76,7 @@ export function ScoreBreakdown({
           >
             <XAxis type="number" domain={[0, 100]} hide />
             <YAxis type="category" hide />
-            <Tooltip
-              cursor={false}
-              content={<ChartTooltip labels={labels} />}
-            />
+            <Tooltip cursor={false} content={<ChartTooltip labels={labels} />} />
             {result.factors.map((f, i) => (
               <Bar
                 key={f.name}
@@ -93,48 +94,43 @@ export function ScoreBreakdown({
         </div>
       </div>
 
-      <table className="w-full border-collapse text-xs">
-        <thead>
-          <tr className="border-b border-border text-muted">
-            <th className="px-4 py-1.5 text-left font-mono text-[10px] uppercase tracking-wider">
-              Factor
-            </th>
-            <th className="px-2 py-1.5 text-right font-mono text-[10px] uppercase tracking-wider">
-              Weight
-            </th>
-            <th className="px-2 py-1.5 text-right font-mono text-[10px] uppercase tracking-wider">
-              Raw
-            </th>
-            <th className="px-4 py-1.5 text-right font-mono text-[10px] uppercase tracking-wider">
-              Contrib
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          {result.factors.map((f, i) => (
-            <tr key={f.name} className="border-b border-border/50 last:border-0">
-              <td className="px-4 py-1.5">
-                <span className="flex items-center gap-2">
-                  <span
-                    className="inline-block h-2 w-2 shrink-0 rounded-[1px]"
-                    style={{ backgroundColor: colorOf(i) }}
-                  />
-                  {f.label}
+      {/* Sub-score breakdown with physical / USD detail (METHODOLOGY §3–5). */}
+      <div className="mt-2">
+        {result.subScores.map((ss, i) => (
+          <div
+            key={ss.name}
+            className="border-t border-border/50 px-4 py-2 first:border-t-0"
+          >
+            <div className="flex items-center justify-between gap-2">
+              <span className="flex items-center gap-2 text-xs">
+                <span
+                  className="inline-block h-2 w-2 shrink-0 rounded-[1px]"
+                  style={{ backgroundColor: colorOf(i) }}
+                />
+                {ss.label}
+              </span>
+              {ss.weight > 0 && (
+                <span
+                  className={`font-mono text-sm tabular-nums ${scoreTextClass(ss.score)}`}
+                >
+                  {ss.score.toFixed(0)}
                 </span>
-              </td>
-              <td className="px-2 py-1.5 text-right font-mono tabular-nums text-muted">
-                {Math.round(f.weight * 100)}%
-              </td>
-              <td className="px-2 py-1.5 text-right font-mono tabular-nums text-muted">
-                {f.rawValue.toFixed(2)}
-              </td>
-              <td className="px-4 py-1.5 text-right font-mono tabular-nums">
-                {f.contribution.toFixed(1)}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+              )}
+            </div>
+            {ss.detail && (
+              <p className="mt-0.5 pl-4 font-mono text-[10px] leading-relaxed text-muted">
+                {ss.detail}
+              </p>
+            )}
+            {ss.weight > 0 && (
+              <p className="mt-0.5 pl-4 font-mono text-[9px] uppercase tracking-wider text-muted/70">
+                weight {Math.round(ss.weight * 100)}% · contributes +
+                {ss.contribution.toFixed(1)}
+              </p>
+            )}
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

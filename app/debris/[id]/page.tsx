@@ -3,9 +3,10 @@ import { notFound } from "next/navigation";
 import { eq } from "drizzle-orm";
 import { db } from "@/lib/db/client";
 import { debrisObjects } from "@/lib/db/schema";
-import { scoreObject } from "@/lib/scoring";
+import { scoreObject, computeSalvageEconomics } from "@/lib/scoring";
+import { formatUsd } from "@/lib/format";
 import { ScoreBreakdown } from "@/components/ScoreBreakdown";
-import { ScoreBadge } from "@/components/ScoreBadge";
+import { ScoreBadge, ConfidenceBadge } from "@/components/ScoreBadge";
 import { ExplainPanel } from "@/components/ExplainPanel";
 
 export const dynamic = "force-dynamic";
@@ -45,6 +46,10 @@ export default async function DebrisDetailPage({
   if (!obj) notFound();
 
   const scores = scoreObject(obj);
+  const econ = computeSalvageEconomics(obj);
+  const peUsd = scores.compliance.meta?.penaltyExposureUsd as number | undefined;
+  const regimes = scores.compliance.meta?.applicableRegimes as string | undefined;
+  const yearsOverdue = scores.compliance.meta?.yearsOverdue as number | undefined;
 
   return (
     <div className="px-8 py-6">
@@ -75,7 +80,8 @@ export default async function DebrisDetailPage({
           <p className="font-mono text-[10px] uppercase tracking-widest text-muted">
             Composite
           </p>
-          <div className="mt-1">
+          <div className="mt-1 flex items-center justify-end gap-2">
+            <ConfidenceBadge confidence={scores.confidence} />
             <ScoreBadge score={scores.composite} emphasis />
           </div>
         </div>
@@ -108,6 +114,112 @@ export default async function DebrisDetailPage({
         <ScoreBreakdown title="Collision Risk" result={scores.collisionRisk} />
         <ScoreBreakdown title="Compliance Urgency" result={scores.compliance} />
         <ScoreBreakdown title="Salvage Value" result={scores.salvage} />
+      </div>
+
+      {/* USD economics + regulatory exposure (METHODOLOGY §4–5) */}
+      <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-3">
+        <div className="rounded-sm border border-border bg-surface lg:col-span-2">
+          <div className="flex items-baseline justify-between border-b border-border px-4 py-3">
+            <h3 className="font-mono text-xs uppercase tracking-widest text-muted">
+              Salvage economics — Net Salvage Value (USD)
+            </h3>
+            <span className="font-mono text-[10px] uppercase tracking-wider text-muted">
+              {econ.objectClass.replace(/_/g, " ")} · ${econ.pricePerKg}/kg ·{" "}
+              {econ.mceTier} tier
+            </span>
+          </div>
+          <table className="w-full border-collapse text-sm">
+            <thead>
+              <tr className="border-b border-border text-muted">
+                <th className="px-4 py-1.5 text-left font-mono text-[10px] uppercase tracking-wider">
+                  Component
+                </th>
+                <th className="px-4 py-1.5 text-right font-mono text-[10px] uppercase tracking-wider">
+                  Today
+                </th>
+                <th className="px-4 py-1.5 text-right font-mono text-[10px] uppercase tracking-wider">
+                  2035
+                </th>
+              </tr>
+            </thead>
+            <tbody className="font-mono tabular-nums">
+              <tr className="border-b border-border/50">
+                <td className="px-4 py-2">Recoverable material value</td>
+                <td className="px-4 py-2 text-right">{formatUsd(econ.rmvToday)}</td>
+                <td className="px-4 py-2 text-right">{formatUsd(econ.rmv2035)}</td>
+              </tr>
+              <tr className="border-b border-border/50">
+                <td className="px-4 py-2">
+                  Strategic premium
+                  <span className="ml-2 text-[10px] text-muted">
+                    risk {formatUsd(econ.spRisk)} + bounty {formatUsd(econ.spBounty)}
+                  </span>
+                </td>
+                <td className="px-4 py-2 text-right">{formatUsd(econ.sp)}</td>
+                <td className="px-4 py-2 text-right">{formatUsd(econ.sp)}</td>
+              </tr>
+              <tr className="border-b border-border/50">
+                <td className="px-4 py-2">Mission cost</td>
+                <td className="px-4 py-2 text-right text-muted">
+                  −{formatUsd(econ.mceToday)}
+                </td>
+                <td className="px-4 py-2 text-right text-muted">
+                  −{formatUsd(econ.mce2035)}
+                </td>
+              </tr>
+              <tr className="border-t border-border">
+                <td className="px-4 py-2.5 font-semibold uppercase tracking-wider text-[11px]">
+                  Net salvage value
+                </td>
+                <td
+                  className={`px-4 py-2.5 text-right font-semibold ${econ.nsvToday >= 0 ? "text-gold" : "text-muted"}`}
+                >
+                  {formatUsd(econ.nsvToday)}
+                </td>
+                <td
+                  className={`px-4 py-2.5 text-right font-semibold ${econ.nsv2035 >= 0 ? "text-gold" : "text-muted"}`}
+                >
+                  {formatUsd(econ.nsv2035)}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div className="rounded-sm border border-border bg-surface">
+          <div className="border-b border-border px-4 py-3">
+            <h3 className="font-mono text-xs uppercase tracking-widest text-muted">
+              Regulatory exposure
+            </h3>
+          </div>
+          <div className="space-y-3 px-4 py-4">
+            <div>
+              <p className="font-mono text-[10px] uppercase tracking-widest text-muted">
+                Penalty exposure
+              </p>
+              <p className="mt-1 font-mono text-lg tabular-nums text-gold">
+                {peUsd !== undefined ? formatUsd(peUsd) : "—"}
+              </p>
+            </div>
+            <div>
+              <p className="font-mono text-[10px] uppercase tracking-widest text-muted">
+                Years overdue
+              </p>
+              <p className="mt-1 font-mono text-lg tabular-nums">
+                {yearsOverdue ?? 0}
+                <span className="ml-1 text-xs text-muted">yr</span>
+              </p>
+            </div>
+            <div>
+              <p className="font-mono text-[10px] uppercase tracking-widest text-muted">
+                Applicable regimes
+              </p>
+              <p className="mt-1 text-xs leading-relaxed text-text">
+                {regimes ?? "—"}
+              </p>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* AI briefing */}

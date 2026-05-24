@@ -2,8 +2,14 @@ import Link from "next/link";
 import { inArray } from "drizzle-orm";
 import { db } from "@/lib/db/client";
 import { debrisObjects, type DebrisObject } from "@/lib/db/schema";
-import { scoreObject, type ObjectScores } from "@/lib/scoring";
-import { ScoreBadge } from "@/components/ScoreBadge";
+import {
+  scoreObject,
+  computeSalvageEconomics,
+  type ObjectScores,
+  type SalvageEconomics,
+} from "@/lib/scoring";
+import { formatUsd } from "@/lib/format";
+import { ScoreBadge, ConfidenceBadge } from "@/components/ScoreBadge";
 import { ExplainPanel } from "@/components/ExplainPanel";
 
 export const dynamic = "force-dynamic";
@@ -44,6 +50,19 @@ const SCORE_ROWS: { label: string; get: (s: ObjectScores) => number }[] = [
   { label: "Compliance Urgency", get: (s) => s.compliance.score },
   { label: "Salvage Value", get: (s) => s.salvage.score },
   { label: "Composite", get: (s) => s.composite },
+];
+
+// USD economics rows — higher is "best" for each (more recoverable / less exposed).
+const USD_ROWS: {
+  label: string;
+  get: (e: SalvageEconomics, s: ObjectScores) => number;
+}[] = [
+  { label: "NSV (today)", get: (e) => e.nsvToday },
+  { label: "NSV (2035)", get: (e) => e.nsv2035 },
+  {
+    label: "Penalty exposure",
+    get: (_e, s) => (s.compliance.meta?.penaltyExposureUsd as number) ?? 0,
+  },
 ];
 
 export default async function ComparePage({
@@ -88,10 +107,17 @@ export default async function ComparePage({
   const scored = objects.map((object) => ({
     object,
     scores: scoreObject(object),
+    econ: computeSalvageEconomics(object),
   }));
 
   const bestByRow = SCORE_ROWS.map((row) => {
     const values = scored.map((s) => row.get(s.scores));
+    const max = Math.max(...values);
+    return values.map((v) => v === max);
+  });
+
+  const bestByUsd = USD_ROWS.map((row) => {
+    const values = scored.map((s) => row.get(s.econ, s.scores));
     const max = Math.max(...values);
     return values.map((v) => v === max);
   });
@@ -119,9 +145,12 @@ export default async function ComparePage({
               <th className="w-40 px-3 py-3 text-left font-mono text-[10px] uppercase tracking-wider text-muted">
                 Attribute
               </th>
-              {scored.map(({ object }) => (
+              {scored.map(({ object, scores }) => (
                 <th key={object.id} className="px-3 py-3 text-left align-bottom">
                   <span className="block font-semibold">{object.name}</span>
+                  <span className="mt-1 inline-block">
+                    <ConfidenceBadge confidence={scores.confidence} />
+                  </span>
                 </th>
               ))}
             </tr>
@@ -162,6 +191,34 @@ export default async function ComparePage({
                     </span>
                   </td>
                 ))}
+              </tr>
+            ))}
+            {USD_ROWS.map((row, ri) => (
+              <tr key={row.label} className="border-b border-border/50">
+                <td className="px-3 py-2.5 font-mono text-[10px] uppercase tracking-wider text-muted">
+                  {row.label}
+                  <span className="ml-1 text-[9px] lowercase text-muted/60">usd</span>
+                </td>
+                {scored.map(({ object, scores, econ }, ci) => {
+                  const v = row.get(econ, scores);
+                  return (
+                    <td
+                      key={object.id}
+                      className="px-3 py-2.5 font-mono tabular-nums"
+                    >
+                      <span className="flex items-center gap-1.5">
+                        <span className={v >= 0 ? "" : "text-muted"}>
+                          {formatUsd(v)}
+                        </span>
+                        {bestByUsd[ri][ci] && (
+                          <span className="font-mono text-[9px] uppercase text-gold">
+                            best
+                          </span>
+                        )}
+                      </span>
+                    </td>
+                  );
+                })}
               </tr>
             ))}
           </tbody>
