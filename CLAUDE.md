@@ -422,3 +422,11 @@ Unattended booth mode: cycles the camera through the visible heroes, drawing eac
 - `app/globe/useCycler.ts` — state machine (`off`/`running`/`paused`); advances every 10s, pauses on pointer/key/wheel interaction, resumes after 30s idle.
 - `CesiumScene.tsx` exposes a `SceneApi` (`focusObject(id)` = select + orbit + camera fly; `clearFocus()`) via an `onReady` callback prop (avoids forwardRef across the `dynamic(ssr:false)` boundary).
 - `GlobeView.tsx` — "Auto-tour" toggle (bottom-left) with a status dot; composes POLISH-2 (orbit) + POLISH-3 (camera). Respects filters (tours only the visible set).
+
+---
+
+## 17. Booth polish — night imagery, flags, caption
+
+- **Night imagery:** `CesiumScene` swaps to NASA "Earth at Night" (Black Marble, Ion asset **3812**). The default Ion token can't access 3812 (404) → falls back to the **default imagery dimmed** (brightness 0.45 / saturation 0.55) for a moody night look. **To get true Black Marble city-lights, add asset 3812 to the Ion account** ("Asset Depot → Earth at Night → Add to my assets"); it then auto-applies.
+- **Booth flags (`GlobeView`):** `?fullscreen=1` renders the globe full-bleed (`fixed inset-0 z-50`), hiding the header/sidebar/filter panel/detail panel, with an "Exit" link. `?demo=1` implies fullscreen **and** auto-starts the auto-tour — a one-click investor/booth link.
+- **"Now showing" caption:** bottom-center, fades in per object (`animate-caption` in `globals.css`) while the tour runs. Cold-start: `onReady` focuses the first object immediately so `?demo=1` shows an object without waiting for the first tick.

@@ -154,8 +154,23 @@ export default function GlobeView({ objects }: { objects: HeroObject[] }) {
     });
   };
 
+  // Booth flags: ?fullscreen=1 hides chrome; ?demo=1 also auto-starts the tour.
+  const demoParam = searchParams.get("demo") === "1";
+  const fullscreen = searchParams.get("fullscreen") === "1" || demoParam;
+  useEffect(() => {
+    if (demoParam) setCyclerOn(true);
+    // run once on mount
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   return (
-    <div className="relative h-[calc(100vh-3.5rem)] w-full overflow-hidden bg-bg">
+    <div
+      className={
+        fullscreen
+          ? "fixed inset-0 z-50 overflow-hidden bg-bg"
+          : "relative h-[calc(100vh-3.5rem)] w-full overflow-hidden bg-bg"
+      }
+    >
       <CesiumScene
         objects={objects}
         visibleIds={visibleIds}
@@ -166,14 +181,27 @@ export default function GlobeView({ objects }: { objects: HeroObject[] }) {
         onSelect={setSelected}
         onReady={(api) => {
           sceneApiRef.current = api;
+          // Cold-start: if the tour is already on (e.g. ?demo=1), focus the
+          // first object immediately rather than waiting for the next tick.
+          if (cyclerOn && visible.length > 0) api.focusObject(visible[0].id);
         }}
       />
-      <FilterPanel variant="globe" />
-      <div className="pointer-events-none absolute right-4 top-4 z-10 text-right font-mono text-[10px] uppercase tracking-widest text-muted">
-        {visible.length} / {objects.length} heroes
-        <br />
-        drag to orbit · scroll to zoom
-      </div>
+      {!fullscreen && <FilterPanel variant="globe" />}
+      {!fullscreen && (
+        <div className="pointer-events-none absolute right-4 top-4 z-10 text-right font-mono text-[10px] uppercase tracking-widest text-muted">
+          {visible.length} / {objects.length} heroes
+          <br />
+          drag to orbit · scroll to zoom
+        </div>
+      )}
+      {fullscreen && (
+        <Link
+          href="/globe"
+          className="absolute right-4 top-4 z-10 rounded-sm border border-border bg-surface/80 px-3 py-1.5 font-mono text-[10px] uppercase tracking-wider text-muted backdrop-blur hover:text-text"
+        >
+          Exit ↗
+        </Link>
+      )}
 
       <div className="absolute bottom-16 left-4 z-10 flex items-center gap-3 rounded-sm border border-border bg-surface/90 px-3 py-2 backdrop-blur">
         <button
@@ -208,7 +236,23 @@ export default function GlobeView({ objects }: { objects: HeroObject[] }) {
         )}
       </div>
 
-      {selected && <DetailPanel object={selected} onClose={() => setSelected(null)} />}
+      {cyclerOn && selected && (
+        <div
+          key={selected.id}
+          className="animate-caption pointer-events-none absolute bottom-28 left-1/2 z-10 -translate-x-1/2 text-center"
+        >
+          <p className="font-mono text-[10px] uppercase tracking-widest text-muted">
+            Now showing
+          </p>
+          <p className="mt-1 text-lg font-semibold tracking-tight text-gold">
+            {selected.name}
+          </p>
+        </div>
+      )}
+
+      {!fullscreen && selected && (
+        <DetailPanel object={selected} onClose={() => setSelected(null)} />
+      )}
     </div>
   );
 }

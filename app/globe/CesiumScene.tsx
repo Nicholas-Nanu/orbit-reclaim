@@ -20,6 +20,7 @@ import {
   ScreenSpaceEventType,
   Entity,
   ConstantProperty,
+  IonImageryProvider,
   PointPrimitiveCollection,
   PolylineCollection,
   Material,
@@ -143,6 +144,25 @@ export default function CesiumScene({
     viewer.scene.globe.baseColor = Color.fromCssColorString("#0d0d0d");
     if (viewer.scene.skyAtmosphere) viewer.scene.skyAtmosphere.show = true;
     (viewer.cesiumWidget.creditContainer as HTMLElement).style.display = "none";
+
+    // Prefer NASA "Earth at Night" (Black Marble, Ion asset 3812) for the
+    // night-lights look. If the Ion account can't access that asset, fall back
+    // to the default imagery, dimmed for a moodier on-brand night look.
+    (async () => {
+      try {
+        const nightProvider = await IonImageryProvider.fromAssetId(3812);
+        if (viewer.isDestroyed()) return;
+        viewer.imageryLayers.removeAll();
+        viewer.imageryLayers.addImageryProvider(nightProvider);
+      } catch {
+        const base = viewer.imageryLayers.get(0);
+        if (base) {
+          base.brightness = 0.45;
+          base.saturation = 0.55;
+          base.gamma = 0.75;
+        }
+      }
+    })();
 
     const now = JulianDate.now();
     const start = JulianDate.addSeconds(now, -1800, new JulianDate());
