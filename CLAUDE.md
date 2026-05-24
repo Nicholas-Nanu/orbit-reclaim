@@ -373,4 +373,12 @@ A CesiumJS hero page rendering the curated showcase objects as labeled, score-co
 - **`satellite.js` is pinned to v5** — v7's WASM build imports `node:worker_threads` and breaks browser bundling.
 - **Requires `NEXT_PUBLIC_CESIUM_ION_TOKEN`** (in `.env.local` and Vercel) for Earth imagery.
 
-VIZ-2 (the full ~34k point cloud via a Web Worker + `PointPrimitiveCollection`) is the planned next step.
+### VIZ-2 — full-catalog point cloud
+
+The entire ~34k catalog renders as an ambient GPU point cloud behind the heroes.
+
+- `app/api/globe/tles/route.ts` — compact `{id,l1,l2,t}` feed for all objects (cached 1h).
+- `app/globe/propagation.worker.ts` — Web Worker; SGP4 → ECEF (`eciToEcf`+`gstime`) for every object per tick, streamed back as a transferable `Float32Array`.
+- `CesiumScene.tsx` — `PointPrimitiveCollection` (colored by type, hero ids excluded), 250ms tick loop, ambient point click → `/debris/[id]`, cloud on/off toggle + counter.
+
+`satellite.js` must stay on **v5** for the worker (v7's WASM imports `node:worker_threads`). `@spz-loader/core` is stubbed in `next.config.mjs` (see VIZ-1 notes). **Always prod-test the globe (`next build && next start`) before deploying** — dev tolerated a minified-only crash once.
