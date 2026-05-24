@@ -3,6 +3,7 @@
 import { useCallback, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { ScoreBadge } from "./ScoreBadge";
+import { formatUsd } from "@/lib/format";
 import { TYPES } from "@/lib/catalog-filters";
 
 export type CatalogRow = {
@@ -15,6 +16,8 @@ export type CatalogRow = {
   compliance: number;
   salvage: number;
   composite: number;
+  nsvToday: number | null;
+  yearsOverdue: number | null;
 };
 
 type SortKey =
@@ -26,7 +29,9 @@ type SortKey =
   | "collision"
   | "compliance"
   | "salvage"
-  | "composite";
+  | "composite"
+  | "nsvToday"
+  | "yearsOverdue";
 
 const MAX_COMPARE = 3;
 const TYPE_LABEL = new Map<string, string>(TYPES.map((t) => [t.key, t.label]));
@@ -46,6 +51,8 @@ const COLUMNS: {
   { key: "compliance", label: "Compliance", numeric: true, align: "right" },
   { key: "salvage", label: "Salvage", numeric: true, align: "right" },
   { key: "composite", label: "Composite", numeric: true, align: "right" },
+  { key: "nsvToday", label: "NSV (today)", numeric: true, align: "right" },
+  { key: "yearsOverdue", label: "Overdue", numeric: true, align: "right" },
 ];
 
 export function DebrisTable({
@@ -212,6 +219,26 @@ export function DebrisTable({
                   </td>
                   <td className="px-3 py-2 text-right">
                     <ScoreBadge score={row.composite} emphasis />
+                  </td>
+                  <td
+                    className={`px-3 py-2 text-right font-mono tabular-nums ${
+                      row.nsvToday != null && row.nsvToday >= 0
+                        ? "text-gold"
+                        : "text-muted"
+                    }`}
+                  >
+                    {row.nsvToday != null ? formatUsd(row.nsvToday) : "—"}
+                  </td>
+                  <td
+                    className={`px-3 py-2 text-right font-mono tabular-nums ${
+                      row.yearsOverdue && row.yearsOverdue > 0
+                        ? "text-scoreHigh"
+                        : "text-muted"
+                    }`}
+                  >
+                    {row.yearsOverdue && row.yearsOverdue > 0
+                      ? `${row.yearsOverdue} yr`
+                      : "—"}
                   </td>
                 </tr>
               );

@@ -21,7 +21,7 @@ import type {
  *    worked example (3.83e-3) computed from the formula. We implement the
  *    formula, so the worked example reproduces.
  */
-export const MODEL_VERSION = "2.0";
+export const MODEL_VERSION = "2.1";
 
 /**
  * Reference "now" for time-relative factors (e.g. regulatory overdue years).
@@ -53,6 +53,7 @@ export type SubScore = {
   weight: number; // weight within the lens (sub-score weights sum to 1)
   contribution: number; // weight × score
   detail?: string; // human-readable physical/economic detail (e.g. "PoC 1.9e-3 /yr")
+  citation?: string; // METHODOLOGY.md section anchor (e.g. "§3.2.1")
   factors?: Factor[]; // optional finer breakdown of this sub-score
 };
 
@@ -135,6 +136,7 @@ export function subScore(
   score: number,
   weight: number,
   detail?: string,
+  citation?: string,
   factors?: Factor[],
 ): SubScore {
   const s = clamp(score, 0, 100);
@@ -145,6 +147,7 @@ export function subScore(
     weight,
     contribution: round1(weight * s),
     detail,
+    citation,
     factors,
   };
 }
@@ -256,15 +259,25 @@ export function enforcementLikelihood(j: Jurisdiction | null): number {
   return ENFORCEMENT_LIKELIHOOD[j] ?? 30;
 }
 
-/** Base regulatory penalty exposure in USD by jurisdiction (METHODOLOGY §4.3.4). */
-const BASE_PENALTY_USD: Partial<Record<Jurisdiction, number>> = {
+/**
+ * Base regulatory penalty exposure in USD by jurisdiction (METHODOLOGY §4.3.4).
+ * Graduated table: US/ESA anchored to cited precedents (Dish $150k, ESA ~€500k);
+ * other jurisdictions carry a nominal base reflecting a reputational/contingent
+ * floor under their (weaker) regimes rather than $0, so PE differentiates them.
+ */
+const BASE_PENALTY_USD: Record<Jurisdiction, number> = {
   US: 150_000, // Dish settlement precedent (2023)
   ESA: 500_000, // ~€500k contractual disposal-clause breach
+  JP: 250_000, // JAXA mandatory standards
+  IN: 100_000, // IN-SPACe, growing enforcement
+  CN: 50_000, // limited enforcement history
+  RU: 50_000, // limited enforcement history
+  OTHER: 50_000, // Liability Convention floor
 };
 
 export function basePenaltyUsd(j: Jurisdiction | null): number {
-  if (!j) return 0;
-  return BASE_PENALTY_USD[j] ?? 0; // others: Liability Convention contingent only
+  if (!j) return BASE_PENALTY_USD.OTHER;
+  return BASE_PENALTY_USD[j] ?? BASE_PENALTY_USD.OTHER;
 }
 
 /** Mean satellite hull + consequential, used as contingent collision liability. */

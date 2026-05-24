@@ -11,6 +11,9 @@ const nextConfig = {
       ...config.resolve.alias,
       "@spz-loader/core": false,
     };
+    // Import .md files as raw strings (used by the /methodology page to render
+    // docs/METHODOLOGY.md). Bundling avoids runtime file-tracing issues on Vercel.
+    config.module.rules.push({ test: /\.md$/, type: "asset/source" });
     return config;
   },
 };

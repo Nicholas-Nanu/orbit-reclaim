@@ -80,9 +80,10 @@ export function computeSalvageEconomics(obj: ScoringInput): SalvageEconomics {
   const spBounty = eligible ? ADR_BOUNTY_USD : 0;
   const sp = spRisk + spBounty;
 
-  // Mission cost: tiered base × difficulty modifiers.
+  // Mission cost: tiered base × difficulty modifiers. Non-cooperative ≈ "no
+  // docking port / no active control" (METHODOLOGY §5.2.3) → keyed to thrusters.
   const mce = missionCostUsd(obj.massKg, obj.altitudeKm);
-  const nonCooperative = !(obj.hasThrusters && obj.hasPropellant);
+  const nonCooperative = !obj.hasThrusters;
   const mult =
     (obj.inclinationDeg > 80 ? 1.2 : 1) *
     (nonCooperative ? 1.3 : 1) *
@@ -179,6 +180,7 @@ export function scoreSalvageValue(
       weight: 0,
       contribution: 0,
       detail: `${fmtUsd(e.rmvToday)} today · ${fmtUsd(e.rmv2035)} (2035) · ${e.objectClass} @ $${e.pricePerKg}/kg`,
+      citation: "§5.2.1",
     },
     {
       name: "sp",
@@ -187,6 +189,7 @@ export function scoreSalvageValue(
       weight: 0,
       contribution: 0,
       detail: `${fmtUsd(e.sp)} (risk ${fmtUsd(e.spRisk)} + bounty ${fmtUsd(e.spBounty)})`,
+      citation: "§5.2.2",
     },
     {
       name: "mce",
@@ -195,6 +198,7 @@ export function scoreSalvageValue(
       weight: 0,
       contribution: 0,
       detail: `${fmtUsd(e.mceToday)} today · ${fmtUsd(e.mce2035)} (2035) · ${e.mceTier} tier`,
+      citation: "§5.2.3",
     },
     {
       name: "nsv",
@@ -203,6 +207,7 @@ export function scoreSalvageValue(
       weight: 1,
       contribution: score,
       detail: `${fmtUsd(e.nsvToday)} today · ${fmtUsd(e.nsv2035)} (2035)`,
+      citation: "§5.2.4",
     },
   ];
 

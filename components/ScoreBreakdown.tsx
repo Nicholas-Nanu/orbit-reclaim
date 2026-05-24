@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import {
   Bar,
   BarChart,
@@ -108,6 +109,15 @@ export function ScoreBreakdown({
                   style={{ backgroundColor: colorOf(i) }}
                 />
                 {ss.label}
+                {ss.citation && (
+                  <Link
+                    href={`/methodology#${ss.citation.replace(/[§.]/g, "").trim()}`}
+                    title={`Methodology ${ss.citation}`}
+                    className="font-mono text-[9px] text-goldDim hover:text-gold"
+                  >
+                    {ss.citation}
+                  </Link>
+                )}
               </span>
               {ss.weight > 0 && (
                 <span

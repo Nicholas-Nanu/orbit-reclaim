@@ -20,6 +20,8 @@ const SORT_COLUMNS = {
   compliance: debrisObjects.compliance,
   salvage: debrisObjects.salvage,
   composite: debrisObjects.composite,
+  nsvToday: debrisObjects.nsvTodayUsd,
+  yearsOverdue: debrisObjects.yearsOverdue,
 } as const;
 
 export type SortKey = keyof typeof SORT_COLUMNS;
@@ -78,6 +80,8 @@ export type CatalogQueryResult = {
     compliance: number;
     salvage: number;
     composite: number;
+    nsvToday: number | null;
+    yearsOverdue: number | null;
   }[];
   total: number;
 };
@@ -104,6 +108,8 @@ export async function queryCatalog(
       compliance: debrisObjects.compliance,
       salvage: debrisObjects.salvage,
       composite: debrisObjects.composite,
+      nsvToday: debrisObjects.nsvTodayUsd,
+      yearsOverdue: debrisObjects.yearsOverdue,
     })
     .from(debrisObjects)
     .where(where)
@@ -127,6 +133,8 @@ export async function queryCatalog(
       compliance: r.compliance ?? 0,
       salvage: r.salvage ?? 0,
       composite: r.composite ?? 0,
+      nsvToday: r.nsvToday,
+      yearsOverdue: r.yearsOverdue,
     })),
     total: count,
   };

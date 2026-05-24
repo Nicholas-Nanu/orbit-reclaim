@@ -7,6 +7,7 @@ const NAV = [
   { href: "/", label: "Dashboard", glyph: "▦" },
   { href: "/globe", label: "Globe", glyph: "◉" },
   { href: "/compare", label: "Compare", glyph: "⇄" },
+  { href: "/methodology", label: "Methodology", glyph: "§" },
   { href: "/about", label: "About", glyph: "◇" },
 ] as const;
 

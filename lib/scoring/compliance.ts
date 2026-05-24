@@ -139,6 +139,7 @@ export function scoreCompliance(obj: ScoringInput): ScoreResult {
       overdue.deadlineYear
         ? `${overdue.yearsOverdue} yr overdue · ${overdue.regimeName} (deadline ${overdue.deadlineYear})`
         : "no disposal deadline yet",
+      "§4.3.1",
     ),
     subScore(
       "el",
@@ -146,6 +147,7 @@ export function scoreCompliance(obj: ScoringInput): ScoreResult {
       el,
       0.25,
       `${obj.jurisdiction ?? "unknown"}`,
+      "§4.3.2",
     ),
     subScore(
       "ocg",
@@ -153,6 +155,7 @@ export function scoreCompliance(obj: ScoringInput): ScoreResult {
       ocg,
       0.15,
       ocg >= 100 ? "cannot self-resolve" : `capability ${(100 - ocg).toFixed(0)}/100`,
+      "§4.3.3",
     ),
     subScore(
       "pe",
@@ -160,6 +163,7 @@ export function scoreCompliance(obj: ScoringInput): ScoreResult {
       peScore,
       0.15,
       `${fmtUsd(peUsd)} exposure`,
+      "§4.3.4",
     ),
   ];
 

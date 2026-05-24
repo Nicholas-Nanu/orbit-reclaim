@@ -14,6 +14,7 @@
 | --- | --- | --- |
 | 1.0 | 2026-05-24 | Initial methodology (simple weighted sums, 0–100 only). |
 | **2.0** | **2026-05-24** | **Multi-tier scoring with sub-scores, real-world citations, USD valuation for salvage, uncertainty quantification, regulatory-regime engine.** |
+| 2.1 | 2026-05-24 | Reconciled constants with PHASE-SCORING-V2: graduated penalty-exposure base table (§4.3.4); non-cooperative MCE modifier keyed to thrusters (§5.2.3). Worked examples in §5.4 unchanged. |
 
 This document is the source of truth for Orbit Reclaim's scoring engine. Code in `lib/scoring/` must trace every constant and weight to a section here. When the spec and the code disagree, the spec wins — update the code or update this file with a brief rationale, then re-run the regression tests in `tests/scoring.test.ts`.
 
@@ -293,7 +294,7 @@ PE_usd = base_penalty(jurisdiction) + PoC_annual × contingent_collision_liabili
 
 Where `contingent_collision_liability = $250M` (mean satellite hull + consequential).
 
-> **Implementation note.** `base_penalty(jurisdiction)`: US = $150k, ESA = $500k, all others = $0 (Liability Convention contingent term only).
+> **Implementation note (v2.1, graduated).** `base_penalty(jurisdiction)`: US $150k, ESA $500k, JP $250k, IN $100k, CN/RU/OTHER $50k. US/ESA anchor to the cited precedents; other jurisdictions carry a nominal base (a reputational/contingent floor under weaker regimes) rather than $0, so penalty exposure differentiates them. (Earlier v2.0 used $0 for non-US/ESA; reconciled with PHASE-SCORING-V2.)
 
 **Score transform.** PE_score = clamp(0, 100, 16.7 × log10(PE_usd + 1)):
 - $1M → 100
@@ -431,7 +432,7 @@ Additional modifiers applied to base MCE:
 - Non-cooperative target (no docking port): ×1.3 (capture mechanism complexity)
 - Fragmented / tumbling: ×1.5 (rendezvous difficulty)
 
-> **Implementation note.** "Non-cooperative" is taken as any object that cannot maneuver itself, i.e. `!(hasThrusters && hasPropellant)`. "Fragmented" is `!intact`.
+> **Implementation note (v2.1).** "Non-cooperative" (no docking port / no active control) is keyed to thrusters: `!hasThrusters`. "Fragmented" is `!intact`. (Earlier v2.0 used `!(hasThrusters && hasPropellant)`; reconciled with PHASE-SCORING-V2 — identical on the §5.4 worked examples.)
 
 #### 5.2.4 Net Salvage Value (NSV) — USD
 

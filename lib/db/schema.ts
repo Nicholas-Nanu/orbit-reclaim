@@ -81,6 +81,7 @@ export const debrisObjects = pgTable("debris_objects", {
   nsvTodayUsd: real("nsv_today_usd"),
   nsv2035Usd: real("nsv_2035_usd"),
   penaltyExposureUsd: real("penalty_exposure_usd"),
+  yearsOverdue: integer("years_overdue"),
   // Whether physical inputs (mass/material) are heuristic vs curated/authoritative;
   // drives the confidence flag and is re-read on detail/compare for consistency.
   physicalsEstimated: boolean("physicals_estimated").notNull().default(true),

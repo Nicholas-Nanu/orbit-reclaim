@@ -3,7 +3,8 @@ import { notFound } from "next/navigation";
 import { eq } from "drizzle-orm";
 import { db } from "@/lib/db/client";
 import { debrisObjects } from "@/lib/db/schema";
-import { scoreObject, computeSalvageEconomics } from "@/lib/scoring";
+import { scoreObject, computeSalvageEconomics, MODEL_VERSION } from "@/lib/scoring";
+import { hashInputs } from "@/lib/scoring/audit";
 import { getSalvageBreakpoints } from "@/lib/db/salvage-breakpoints";
 import { formatUsd } from "@/lib/format";
 import { ScoreBreakdown } from "@/components/ScoreBreakdown";
@@ -228,6 +229,16 @@ export default async function DebrisDetailPage({
       <div className="mt-6">
         <ExplainPanel objectId={obj.id} />
       </div>
+
+      {/* Audit footer (METHODOLOGY §8) */}
+      <p className="mt-6 border-t border-border pt-3 font-mono text-[10px] uppercase tracking-wider text-muted">
+        <Link href="/methodology" className="text-goldDim hover:text-gold">
+          Methodology v{MODEL_VERSION}
+        </Link>
+        {" · model hash "}
+        <span className="text-text">{hashInputs(obj)}</span>
+        {" · scores computed on demand"}
+      </p>
     </div>
   );
 }

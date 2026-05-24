@@ -188,6 +188,7 @@ export function attachScores(
     nsvTodayUsd: scores.salvage.meta?.nsvTodayUsd as number,
     nsv2035Usd: scores.salvage.meta?.nsv2035Usd as number,
     penaltyExposureUsd: scores.compliance.meta?.penaltyExposureUsd as number,
+    yearsOverdue: scores.compliance.meta?.yearsOverdue as number,
     modelVersion: MODEL_VERSION,
   };
 }

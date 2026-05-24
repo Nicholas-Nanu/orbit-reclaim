@@ -50,6 +50,7 @@ export function scoreCollisionRisk(obj: ScoringInput): ScoreResult {
       pocScore,
       0.5,
       `${fmtExp(poc)} /yr · ${density.band}`,
+      "§3.2.1",
       [
         {
           name: "spatialDensity",
@@ -66,6 +67,7 @@ export function scoreCollisionRisk(obj: ScoringInput): ScoreResult {
       csScore,
       0.3,
       `${csMJ >= 1000 ? (csMJ / 1000).toFixed(1) + " GJ" : csMJ.toFixed(0) + " MJ"} kinetic`,
+      "§3.2.2",
     ),
     subScore(
       "crc",
@@ -73,6 +75,7 @@ export function scoreCollisionRisk(obj: ScoringInput): ScoreResult {
       crcScore,
       0.2,
       `${Math.round((yearsToDecay > 1e4 ? 1e4 : yearsToDecay))} yr persistence · sin(i)=${crossingNorm.toFixed(2)}`,
+      "§3.2.3",
     ),
   ];
 
