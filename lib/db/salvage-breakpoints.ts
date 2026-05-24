@@ -25,3 +25,21 @@ export async function getSalvageBreakpoints(): Promise<SalvageBreakpoints> {
   cached = { at: Date.now(), data };
   return data;
 }
+
+/**
+ * Compact, evenly-spaced quantiles of the NSV distribution (default 101 points).
+ * Lets the client recompute the salvage percentile live in the what-if simulator
+ * without shipping all ~34k values — percentileRank against these quantiles
+ * approximates the true percentile to within ~1 point.
+ */
+export async function getSalvageQuantiles(n = 101): Promise<number[]> {
+  const all = await getSalvageBreakpoints(); // sorted ascending
+  if (all.length === 0) return [];
+  if (all.length <= n) return all;
+  const out: number[] = [];
+  for (let i = 0; i < n; i++) {
+    const idx = Math.round((i / (n - 1)) * (all.length - 1));
+    out.push(all[idx]);
+  }
+  return out;
+}

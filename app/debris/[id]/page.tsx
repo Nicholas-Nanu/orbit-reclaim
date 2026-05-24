@@ -5,11 +5,15 @@ import { db } from "@/lib/db/client";
 import { debrisObjects } from "@/lib/db/schema";
 import { scoreObject, computeSalvageEconomics, MODEL_VERSION } from "@/lib/scoring";
 import { hashInputs } from "@/lib/scoring/audit";
-import { getSalvageBreakpoints } from "@/lib/db/salvage-breakpoints";
+import {
+  getSalvageBreakpoints,
+  getSalvageQuantiles,
+} from "@/lib/db/salvage-breakpoints";
 import { formatUsd } from "@/lib/format";
 import { ScoreBreakdown } from "@/components/ScoreBreakdown";
 import { ScoreBadge, ConfidenceBadge } from "@/components/ScoreBadge";
 import { ExplainPanel } from "@/components/ExplainPanel";
+import { WhatIfSimulator } from "@/components/WhatIfSimulator";
 
 export const dynamic = "force-dynamic";
 
@@ -48,11 +52,37 @@ export default async function DebrisDetailPage({
   if (!obj) notFound();
 
   const breakpoints = await getSalvageBreakpoints();
+  const quantiles = await getSalvageQuantiles();
   const scores = scoreObject(obj, undefined, breakpoints);
   const econ = computeSalvageEconomics(obj);
   const peUsd = scores.compliance.meta?.penaltyExposureUsd as number | undefined;
   const regimes = scores.compliance.meta?.applicableRegimes as string | undefined;
   const yearsOverdue = scores.compliance.meta?.yearsOverdue as number | undefined;
+
+  // Baseline for the what-if simulator (ScoringInput fields + identity).
+  const baseline = {
+    id: obj.id,
+    name: obj.name,
+    type: obj.type,
+    launchYear: obj.launchYear,
+    massKg: obj.massKg,
+    crossSectionM2: obj.crossSectionM2,
+    altitudeKm: obj.altitudeKm,
+    inclinationDeg: obj.inclinationDeg,
+    eccentricity: obj.eccentricity,
+    conjunctions30d: obj.conjunctions30d,
+    estimatedYearsToDecay: obj.estimatedYearsToDecay,
+    jurisdiction: obj.jurisdiction,
+    endOfLifeYear: obj.endOfLifeYear,
+    missionStatus: obj.missionStatus,
+    hasPropellant: obj.hasPropellant,
+    hasThrusters: obj.hasThrusters,
+    intact: obj.intact,
+    materialClass: obj.materialClass,
+    deltaVToReachKms: obj.deltaVToReachKms,
+    neighborsWithin50km: obj.neighborsWithin50km,
+    physicalsEstimated: obj.physicalsEstimated,
+  };
 
   return (
     <div className="px-8 py-6">
@@ -110,6 +140,14 @@ export default async function DebrisDetailPage({
           value={obj.crossSectionM2.toLocaleString()}
           unit="m²"
         />
+      </div>
+
+      {/* What-if simulator trigger */}
+      <div className="mt-4 flex items-center justify-between gap-3 rounded-sm border border-border bg-surface px-4 py-3">
+        <p className="font-mono text-[11px] uppercase tracking-wider text-muted">
+          Explore how this object&apos;s scores change if its inputs changed
+        </p>
+        <WhatIfSimulator baseline={baseline} quantiles={quantiles} />
       </div>
 
       {/* Score breakdowns */}
