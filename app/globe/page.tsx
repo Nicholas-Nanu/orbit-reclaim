@@ -13,6 +13,9 @@ export default async function GlobePage() {
     .select({
       id: debrisObjects.id,
       name: debrisObjects.name,
+      type: debrisObjects.type,
+      jurisdiction: debrisObjects.jurisdiction,
+      missionStatus: debrisObjects.missionStatus,
       altitudeKm: debrisObjects.altitudeKm,
       inclinationDeg: debrisObjects.inclinationDeg,
       line1: debrisObjects.line1,
@@ -28,6 +31,9 @@ export default async function GlobePage() {
   const objects: HeroObject[] = rows.map((r) => ({
     id: r.id,
     name: r.name,
+    type: r.type,
+    jurisdiction: r.jurisdiction,
+    missionStatus: r.missionStatus,
     altitudeKm: r.altitudeKm,
     inclinationDeg: r.inclinationDeg,
     line1: r.line1,

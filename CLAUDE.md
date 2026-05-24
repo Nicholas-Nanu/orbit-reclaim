@@ -382,3 +382,16 @@ The entire ~34k catalog renders as an ambient GPU point cloud behind the heroes.
 - `CesiumScene.tsx` — `PointPrimitiveCollection` (colored by type, hero ids excluded), 250ms tick loop, ambient point click → `/debris/[id]`, cloud on/off toggle + counter.
 
 `satellite.js` must stay on **v5** for the worker (v7's WASM imports `node:worker_threads`). `@spz-loader/core` is stubbed in `next.config.mjs` (see VIZ-1 notes). **Always prod-test the globe (`next build && next start`) before deploying** — dev tolerated a minified-only crash once.
+
+---
+
+## 13. Phase POLISH-1 — shared URL filter system
+
+Filters live in URL search params, shared by `/` and `/globe`, so they persist across navigation and are shareable.
+
+- `lib/catalog-filters.ts` — `CatalogFilters` (alt/jur/type/status + score mins + globe `showAmbient`/`colorLens`), `parseFilters`, `bandFor`, `matchesFilters` (client-side, for globe heroes), `activeFilterCount`.
+- `lib/db/catalog-query.ts` — dashboard filters server-side incl. score-min `WHERE`s.
+- `components/FilterPanel.tsx` — shared; `variant="dashboard"` (left rail) or `"globe"` (floating/collapsible w/ color lens + cloud toggle). Chips + 3 score sliders.
+- `components/Sidebar.tsx` — nav links carry the current `?query` across views (view switcher).
+- `app/globe/GlobeView.tsx` reads the URL filters; `CesiumScene` is built **once** and a separate effect toggles entity visibility/color + cloud `.show` on filter change — never recreates the Viewer.
+- Note: `Sidebar` uses `useSearchParams`, so it's wrapped in `<Suspense>` in `app/layout.tsx` (required for the static `/about` + 404 pages).

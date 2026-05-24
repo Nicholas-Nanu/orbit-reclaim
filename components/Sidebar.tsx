@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 
 const NAV = [
   { href: "/", label: "Dashboard", glyph: "▦" },
@@ -17,6 +17,9 @@ function isActive(pathname: string, href: string): boolean {
 
 export function Sidebar() {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
+  // Carry the current filter query string across views so filters persist.
+  const qs = searchParams.toString();
 
   return (
     <aside className="w-56 shrink-0 border-r border-border bg-bg p-4">
@@ -29,7 +32,7 @@ export function Sidebar() {
           return (
             <Link
               key={item.href}
-              href={item.href}
+              href={qs ? `${item.href}?${qs}` : item.href}
               className={`flex items-center gap-3 rounded-sm border-l-2 px-3 py-2 font-mono text-xs uppercase tracking-wider transition-colors ${
                 active
                   ? "border-gold bg-surface text-gold"

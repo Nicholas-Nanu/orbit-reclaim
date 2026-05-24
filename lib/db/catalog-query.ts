@@ -55,6 +55,15 @@ function buildWhere(f: CatalogFilters): SQL | undefined {
       .filter((x): x is SQL => x !== undefined);
     if (bands.length) conds.push(or(...bands) as SQL);
   }
+  if (f.collisionMin > 0) {
+    conds.push(gte(debrisObjects.collisionRisk, f.collisionMin));
+  }
+  if (f.complianceMin > 0) {
+    conds.push(gte(debrisObjects.compliance, f.complianceMin));
+  }
+  if (f.salvageMin > 0) {
+    conds.push(gte(debrisObjects.salvage, f.salvageMin));
+  }
   return conds.length ? and(...conds) : undefined;
 }
 

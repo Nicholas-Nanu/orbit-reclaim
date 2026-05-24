@@ -1,9 +1,12 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { ScoreBadge } from "@/components/ScoreBadge";
+import { FilterPanel } from "@/components/FilterPanel";
+import { parseFilters, matchesFilters } from "@/lib/catalog-filters";
 import type { HeroObject } from "./types";
 
 function GlobeLoading() {
@@ -55,18 +58,14 @@ function DetailPanel({
 
       <div className="grid grid-cols-2 gap-px bg-border">
         <div className="bg-surface px-4 py-3">
-          <p className="font-mono text-[10px] uppercase tracking-widest text-muted">
-            Altitude
-          </p>
+          <p className="font-mono text-[10px] uppercase tracking-widest text-muted">Altitude</p>
           <p className="mt-1 font-mono tabular-nums">
             {Math.round(object.altitudeKm).toLocaleString()}
             <span className="ml-1 text-xs text-muted">km</span>
           </p>
         </div>
         <div className="bg-surface px-4 py-3">
-          <p className="font-mono text-[10px] uppercase tracking-widest text-muted">
-            Inclination
-          </p>
+          <p className="font-mono text-[10px] uppercase tracking-widest text-muted">Inclination</p>
           <p className="mt-1 font-mono tabular-nums">
             {object.inclinationDeg.toFixed(1)}
             <span className="ml-1 text-xs text-muted">°</span>
@@ -84,9 +83,7 @@ function DetailPanel({
           ] as const
         ).map(([label, score]) => (
           <div key={label} className="flex items-center justify-between">
-            <span className="font-mono text-[11px] uppercase tracking-wider text-muted">
-              {label}
-            </span>
+            <span className="font-mono text-[11px] uppercase tracking-wider text-muted">{label}</span>
             <ScoreBadge score={score} emphasis={label === "Composite"} />
           </div>
         ))}
@@ -106,11 +103,40 @@ function DetailPanel({
 
 export default function GlobeView({ objects }: { objects: HeroObject[] }) {
   const [selected, setSelected] = useState<HeroObject | null>(null);
+  const searchParams = useSearchParams();
+  const filterKey = searchParams.toString();
+
+  const filters = useMemo(
+    () => parseFilters(Object.fromEntries(searchParams.entries())),
+    [searchParams],
+  );
+
+  const visible = useMemo(
+    () => objects.filter((o) => matchesFilters(o, filters)),
+    [objects, filters],
+  );
+  const visibleIds = useMemo(() => visible.map((o) => o.id), [visible]);
+
+  // Deselect if the selected hero is filtered out.
+  useEffect(() => {
+    if (selected && !visibleIds.includes(selected.id)) setSelected(null);
+  }, [selected, visibleIds]);
+
   return (
     <div className="relative h-[calc(100vh-3.5rem)] w-full overflow-hidden bg-bg">
-      <CesiumScene objects={objects} onSelect={setSelected} />
-      <div className="pointer-events-none absolute left-4 top-4 z-10 font-mono text-[10px] uppercase tracking-widest text-muted">
-        {objects.length} tracked heroes · drag to orbit · scroll to zoom
+      <CesiumScene
+        objects={objects}
+        visibleIds={visibleIds}
+        colorLens={filters.colorLens}
+        showAmbient={filters.showAmbient}
+        filterKey={filterKey}
+        onSelect={setSelected}
+      />
+      <FilterPanel variant="globe" />
+      <div className="pointer-events-none absolute right-4 top-4 z-10 text-right font-mono text-[10px] uppercase tracking-widest text-muted">
+        {visible.length} / {objects.length} heroes
+        <br />
+        drag to orbit · scroll to zoom
       </div>
       {selected && <DetailPanel object={selected} onClose={() => setSelected(null)} />}
     </div>

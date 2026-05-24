@@ -1,6 +1,9 @@
 export type HeroObject = {
   id: string;
   name: string;
+  type: string;
+  jurisdiction: string | null;
+  missionStatus: string | null;
   altitudeKm: number;
   inclinationDeg: number;
   line1: string | null;

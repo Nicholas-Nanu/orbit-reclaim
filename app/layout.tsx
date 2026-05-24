@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { Header } from "@/components/Header";
@@ -54,7 +55,13 @@ export default function RootLayout({
         <div className="flex min-h-screen flex-col">
           <Header />
           <div className="flex flex-1">
-            <Sidebar />
+            <Suspense
+              fallback={
+                <div className="w-56 shrink-0 border-r border-border bg-bg" />
+              }
+            >
+              <Sidebar />
+            </Suspense>
             <main className="min-w-0 flex-1">{children}</main>
           </div>
         </div>
