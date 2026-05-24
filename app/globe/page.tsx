@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { inArray } from "drizzle-orm";
 import { db } from "@/lib/db/client";
 import { debrisObjects } from "@/lib/db/schema";
@@ -5,9 +6,15 @@ import { CURATED } from "@/lib/data/curated";
 import GlobeView from "./GlobeView";
 import type { HeroObject } from "./types";
 
-export const dynamic = "force-dynamic";
+// The globe's hero set is param-independent: all filtering happens client-side
+// in GlobeView (matchesFilters). Rendering this page dynamically meant every
+// filter navigation re-ran the DB query, and under rapid filter changes those
+// repeated serverless queries exhausted the Supabase pool and crashed the RSC
+// render. ISR caches the param-independent payload so filter navigations are
+// pure client-side (zero DB hits); the catalog only changes nightly anyway.
+export const revalidate = 3600;
 
-export default async function GlobePage() {
+async function loadHeroes() {
   const ids = Object.keys(CURATED);
   const rows = await db
     .select({
@@ -28,7 +35,7 @@ export default async function GlobePage() {
     .from(debrisObjects)
     .where(inArray(debrisObjects.id, ids));
 
-  const objects: HeroObject[] = rows.map((r) => ({
+  return rows.map<HeroObject>((r) => ({
     id: r.id,
     name: r.name,
     type: r.type,
@@ -43,6 +50,23 @@ export default async function GlobePage() {
     salvage: r.salvage ?? 0,
     composite: r.composite ?? 0,
   }));
+}
 
-  return <GlobeView objects={objects} />;
+export default async function GlobePage() {
+  let objects: HeroObject[] = [];
+  try {
+    objects = await loadHeroes();
+  } catch (err) {
+    // A transient DB error during (re)validation shouldn't take down the whole
+    // globe — render with an empty hero set; the next revalidation recovers.
+    console.error("GlobePage: failed to load heroes", err);
+  }
+
+  // GlobeView reads useSearchParams(); a Suspense boundary lets this page be
+  // statically generated (CSR bailout for the param-dependent subtree).
+  return (
+    <Suspense fallback={<div className="h-[calc(100vh-3.5rem)] w-full bg-bg" />}>
+      <GlobeView objects={objects} />
+    </Suspense>
+  );
 }
