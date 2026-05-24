@@ -4,7 +4,7 @@ import type { ObjectScores, ScoreResult } from "@/lib/scoring";
 
 // Uses the Anthropic SDK pointed at DeepSeek's Anthropic-compatible endpoint
 // (https://api.deepseek.com/anthropic). See CLAUDE.md §2/§7.
-export const AI_MODEL = process.env.AI_MODEL ?? "deepseek-v4-pro";
+export const AI_MODEL = process.env.AI_MODEL ?? "deepseek-v4-flash";
 
 const BASE_URL =
   process.env.ANTHROPIC_BASE_URL ?? "https://api.deepseek.com/anthropic";

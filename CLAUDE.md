@@ -36,7 +36,7 @@
 | Charts | Recharts | Score breakdowns, distribution plots. |
 | Orbital data | Space-Track (full catalog) | ~34k real on-orbit objects via the Space-Track GP API, refreshed nightly by a Vercel cron. Physical attrs are heuristic estimates by object class (curated overrides for ~24 showcase objects). See §11. |
 | 3D globe | CesiumJS + Resium + `satellite.js` (v5) | `/globe` hero page; client-side SGP4 propagation. Needs `NEXT_PUBLIC_CESIUM_ION_TOKEN`. See §12. |
-| AI | `@anthropic-ai/sdk` → DeepSeek | Explanations use DeepSeek (`deepseek-v4-pro`) via its **Anthropic-compatible** endpoint (`https://api.deepseek.com/anthropic`). We keep the Anthropic SDK and just set `baseURL` + model, so no new deps. `ANTHROPIC_API_KEY` holds the DeepSeek key. Note: DeepSeek ignores `cache_control`, image/doc/tool content, and `anthropic-beta/version` headers — none of which we use. |
+| AI | `@anthropic-ai/sdk` → DeepSeek | Explanations use DeepSeek (`deepseek-v4-flash` — faster first token than the `pro` reasoning model) via its **Anthropic-compatible** endpoint (`https://api.deepseek.com/anthropic`). We keep the Anthropic SDK and just set `baseURL` + model, so no new deps. `ANTHROPIC_API_KEY` holds the DeepSeek key; override with `AI_MODEL`. Note: DeepSeek ignores `cache_control`, image/doc/tool content, and `anthropic-beta/version` headers — none of which we use. |
 | Deploy | Vercel | Free tier covers the demo. |
 
 **Do not add:** auth, payments, websockets, Redis, Stripe, anything not in the table above. Resist scope creep — this is a pitch tool.
@@ -304,7 +304,7 @@ The route loads the object(s), runs the scoring, and calls Claude with a system 
 
 **Streaming:** use the SDK's streaming API and render tokens as they arrive. The `ExplainPanel` component should show a typewriter effect over the dark background — feels appropriately mission-control.
 
-**Model:** `deepseek-v4-pro` via DeepSeek's Anthropic-compatible endpoint (overrides the original Claude choice — see §2). Configured with `ANTHROPIC_BASE_URL=https://api.deepseek.com/anthropic`. Keep responses to ~200 words max via system prompt.
+**Model:** `deepseek-v4-flash` (default in `lib/claude.ts`; override via `AI_MODEL`) via DeepSeek's Anthropic-compatible endpoint (overrides the original Claude choice — see §2). `flash` is used over `pro` for a faster first token (pro reasons before answering). Configured with `ANTHROPIC_BASE_URL=https://api.deepseek.com/anthropic`. Keep responses to ~200 words max via system prompt.
 
 **Cost guard:** cache explanations by `(objectId, mode, persona)` in memory (no DB) for the session.
 
@@ -430,3 +430,4 @@ Unattended booth mode: cycles the camera through the visible heroes, drawing eac
 - **Night imagery:** `CesiumScene` swaps to NASA "Earth at Night" (Black Marble, Ion asset **3812**). The default Ion token can't access 3812 (404) → falls back to the **default imagery dimmed** (brightness 0.45 / saturation 0.55) for a moody night look. **To get true Black Marble city-lights, add asset 3812 to the Ion account** ("Asset Depot → Earth at Night → Add to my assets"); it then auto-applies.
 - **Booth flags (`GlobeView`):** `?fullscreen=1` renders the globe full-bleed (`fixed inset-0 z-50`), hiding the header/sidebar/filter panel/detail panel, with an "Exit" link. `?demo=1` implies fullscreen **and** auto-starts the auto-tour — a one-click investor/booth link.
 - **"Now showing" caption:** bottom-center, fades in per object (`animate-caption` in `globals.css`) while the tour runs. Cold-start: `onReady` focuses the first object immediately so `?demo=1` shows an object without waiting for the first tick.
+- **Fullscreen toggle:** the normal globe UI has a "⛶ Fullscreen" link (top-right) that enters `?fullscreen=1` while preserving current filters; fullscreen has the "Exit" link.

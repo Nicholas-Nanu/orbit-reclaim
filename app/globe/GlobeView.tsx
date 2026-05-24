@@ -188,10 +188,22 @@ export default function GlobeView({ objects }: { objects: HeroObject[] }) {
       />
       {!fullscreen && <FilterPanel variant="globe" />}
       {!fullscreen && (
-        <div className="pointer-events-none absolute right-4 top-4 z-10 text-right font-mono text-[10px] uppercase tracking-widest text-muted">
-          {visible.length} / {objects.length} heroes
-          <br />
-          drag to orbit · scroll to zoom
+        <div className="absolute right-4 top-4 z-10 flex flex-col items-end gap-2">
+          <Link
+            href={(() => {
+              const p = new URLSearchParams(searchParams.toString());
+              p.set("fullscreen", "1");
+              return `/globe?${p.toString()}`;
+            })()}
+            className="rounded-sm border border-border bg-surface/80 px-3 py-1.5 font-mono text-[10px] uppercase tracking-wider text-muted backdrop-blur hover:text-text"
+          >
+            ⛶ Fullscreen
+          </Link>
+          <span className="pointer-events-none text-right font-mono text-[10px] uppercase tracking-widest text-muted">
+            {visible.length} / {objects.length} heroes
+            <br />
+            drag to orbit · scroll to zoom
+          </span>
         </div>
       )}
       {fullscreen && (
