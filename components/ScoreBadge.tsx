@@ -4,6 +4,11 @@ type Tier = {
   border: string;
 };
 
+/** Text-color class for a 0-100 score, matching the badge tier. */
+export function scoreTextClass(score: number): string {
+  return tier(score).text;
+}
+
 /** Maps a 0-100 score to brand color tiers (CLAUDE.md §6 score gradient). */
 function tier(score: number): Tier {
   if (score >= 75)
