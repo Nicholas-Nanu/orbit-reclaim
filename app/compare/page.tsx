@@ -8,6 +8,7 @@ import {
   type ObjectScores,
   type SalvageEconomics,
 } from "@/lib/scoring";
+import { getSalvageBreakpoints } from "@/lib/db/salvage-breakpoints";
 import { formatUsd } from "@/lib/format";
 import { ScoreBadge, ConfidenceBadge } from "@/components/ScoreBadge";
 import { ExplainPanel } from "@/components/ExplainPanel";
@@ -104,9 +105,10 @@ export default async function ComparePage({
     );
   }
 
+  const breakpoints = await getSalvageBreakpoints();
   const scored = objects.map((object) => ({
     object,
-    scores: scoreObject(object),
+    scores: scoreObject(object, undefined, breakpoints),
     econ: computeSalvageEconomics(object),
   }));
 

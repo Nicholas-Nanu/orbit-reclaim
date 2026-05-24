@@ -1,5 +1,5 @@
 import { altitudeDensity } from "@/lib/scoring/shared";
-import { scoreObject } from "@/lib/scoring";
+import { scoreObject, MODEL_VERSION, type SalvageBreakpoints } from "@/lib/scoring";
 import type {
   DebrisType,
   Jurisdiction,
@@ -85,8 +85,41 @@ function heuristicPhysical(type: DebrisType): Physical {
   }
 }
 
-/** Maps a Space-Track GP record to a fully-scored debris row, or null if unusable. */
-export function mapToDebris(r: GpRecord): NewDebrisObject | null {
+/** Row of mapped inputs (no scores yet); structurally a ScoringInput. */
+export type MappedRow = {
+  id: string;
+  name: string;
+  type: DebrisType;
+  launchYear: number | null;
+  launchCountry: string;
+  jurisdiction: Jurisdiction;
+  massKg: number;
+  crossSectionM2: number;
+  intact: boolean;
+  materialClass: MaterialClass;
+  altitudeKm: number;
+  inclinationDeg: number;
+  eccentricity: number;
+  estimatedYearsToDecay: number;
+  missionStatus: MissionStatus;
+  endOfLifeYear: number | null;
+  hasPropellant: boolean;
+  hasThrusters: boolean;
+  conjunctions30d: number;
+  neighborsWithin50km: number;
+  deltaVToReachKms: number;
+  catalogSource: "spacetrack";
+  line1: string | null | undefined;
+  line2: string | null | undefined;
+  physicalsEstimated: boolean;
+};
+
+/**
+ * Maps a Space-Track GP record to mapped input fields (no scores), or null if
+ * unusable. `physicalsEstimated` is true unless the object is curated (curated
+ * physicals are hand-verified → authoritative).
+ */
+export function buildRow(r: GpRecord): MappedRow | null {
   const apo = r.APOAPSIS ? Number(r.APOAPSIS) : NaN;
   const peri = r.PERIAPSIS ? Number(r.PERIAPSIS) : NaN;
   const inclination = r.INCLINATION ? Number(r.INCLINATION) : NaN;
@@ -104,7 +137,7 @@ export function mapToDebris(r: GpRecord): NewDebrisObject | null {
   const curated = CURATED[r.NORAD_CAT_ID];
   const base = heuristicPhysical(type);
 
-  const row = {
+  return {
     id: r.NORAD_CAT_ID,
     name: r.OBJECT_NAME?.trim() || `NORAD ${r.NORAD_CAT_ID}`,
     type: curated?.type ?? base.type,
@@ -131,14 +164,36 @@ export function mapToDebris(r: GpRecord): NewDebrisObject | null {
     catalogSource: "spacetrack" as const,
     line1: r.TLE_LINE1,
     line2: r.TLE_LINE2,
+    physicalsEstimated: curated === undefined,
   };
+}
 
-  const scores = scoreObject(row);
+/**
+ * Scores a mapped row and attaches all cached columns. Pass `breakpoints`
+ * (the catalog NSV_today distribution) so salvage is the catalog percentile;
+ * without it salvage uses its absolute fallback (METHODOLOGY §5.3).
+ */
+export function attachScores(
+  row: MappedRow,
+  breakpoints?: SalvageBreakpoints,
+): NewDebrisObject {
+  const scores = scoreObject(row, undefined, breakpoints);
   return {
     ...row,
     collisionRisk: scores.collisionRisk.score,
     compliance: scores.compliance.score,
     salvage: scores.salvage.score,
     composite: scores.composite,
+    confidence: scores.confidence,
+    nsvTodayUsd: scores.salvage.meta?.nsvTodayUsd as number,
+    nsv2035Usd: scores.salvage.meta?.nsv2035Usd as number,
+    penaltyExposureUsd: scores.compliance.meta?.penaltyExposureUsd as number,
+    modelVersion: MODEL_VERSION,
   };
+}
+
+/** Maps a Space-Track GP record to a fully-scored debris row, or null if unusable. */
+export function mapToDebris(r: GpRecord): NewDebrisObject | null {
+  const row = buildRow(r);
+  return row ? attachScores(row) : null;
 }

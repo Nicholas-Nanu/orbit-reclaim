@@ -31,6 +31,7 @@ async function loadHeroes() {
       compliance: debrisObjects.compliance,
       salvage: debrisObjects.salvage,
       composite: debrisObjects.composite,
+      confidence: debrisObjects.confidence,
     })
     .from(debrisObjects)
     .where(inArray(debrisObjects.id, ids));
@@ -49,6 +50,7 @@ async function loadHeroes() {
     compliance: r.compliance ?? 0,
     salvage: r.salvage ?? 0,
     composite: r.composite ?? 0,
+    confidence: r.confidence ?? null,
   }));
 }
 

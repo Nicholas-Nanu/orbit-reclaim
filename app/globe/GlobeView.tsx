@@ -4,7 +4,7 @@ import dynamic from "next/dynamic";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { ScoreBadge } from "@/components/ScoreBadge";
+import { ScoreBadge, ConfidenceBadge } from "@/components/ScoreBadge";
 import { FilterPanel } from "@/components/FilterPanel";
 import { parseFilters, matchesFilters } from "@/lib/catalog-filters";
 import { useCycler } from "./useCycler";
@@ -44,9 +44,14 @@ function DetailPanel({
       <div className="flex items-start justify-between border-b border-border px-4 py-3">
         <div>
           <h2 className="text-base font-semibold leading-tight">{object.name}</h2>
-          <p className="mt-1 font-mono text-[10px] uppercase tracking-widest text-muted">
-            NORAD {object.id}
-          </p>
+          <div className="mt-1 flex items-center gap-2">
+            <p className="font-mono text-[10px] uppercase tracking-widest text-muted">
+              NORAD {object.id}
+            </p>
+            {object.confidence && (
+              <ConfidenceBadge confidence={object.confidence} />
+            )}
+          </div>
         </div>
         <button
           type="button"

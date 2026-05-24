@@ -76,6 +76,16 @@ export const debrisObjects = pgTable("debris_objects", {
   compliance: real("compliance"),
   salvage: real("salvage"),
   composite: real("composite"),
+
+  // Methodology v2.0: cached USD economics + confidence (denormalized).
+  nsvTodayUsd: real("nsv_today_usd"),
+  nsv2035Usd: real("nsv_2035_usd"),
+  penaltyExposureUsd: real("penalty_exposure_usd"),
+  // Whether physical inputs (mass/material) are heuristic vs curated/authoritative;
+  // drives the confidence flag and is re-read on detail/compare for consistency.
+  physicalsEstimated: boolean("physicals_estimated").notNull().default(true),
+  confidence: text("confidence").$type<"high" | "medium" | "low">(),
+  modelVersion: text("model_version"),
 });
 
 export type DebrisObject = typeof debrisObjects.$inferSelect;

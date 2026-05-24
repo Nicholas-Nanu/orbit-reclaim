@@ -4,6 +4,7 @@ import { eq } from "drizzle-orm";
 import { db } from "@/lib/db/client";
 import { debrisObjects } from "@/lib/db/schema";
 import { scoreObject, computeSalvageEconomics } from "@/lib/scoring";
+import { getSalvageBreakpoints } from "@/lib/db/salvage-breakpoints";
 import { formatUsd } from "@/lib/format";
 import { ScoreBreakdown } from "@/components/ScoreBreakdown";
 import { ScoreBadge, ConfidenceBadge } from "@/components/ScoreBadge";
@@ -45,7 +46,8 @@ export default async function DebrisDetailPage({
 
   if (!obj) notFound();
 
-  const scores = scoreObject(obj);
+  const breakpoints = await getSalvageBreakpoints();
+  const scores = scoreObject(obj, undefined, breakpoints);
   const econ = computeSalvageEconomics(obj);
   const peUsd = scores.compliance.meta?.penaltyExposureUsd as number | undefined;
   const regimes = scores.compliance.meta?.applicableRegimes as string | undefined;

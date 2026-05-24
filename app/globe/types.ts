@@ -12,4 +12,5 @@ export type HeroObject = {
   compliance: number;
   salvage: number;
   composite: number;
+  confidence: "high" | "medium" | "low" | null;
 };
