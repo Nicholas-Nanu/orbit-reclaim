@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { SITE } from "@/lib/site";
 
 function OrbitGlyph() {
   return (
@@ -29,10 +30,10 @@ export function Header() {
       <Link href="/" className="flex items-center gap-3">
         <OrbitGlyph />
         <span className="text-lg font-semibold tracking-tight text-gold">
-          ORBIT RECLAIM
+          {SITE.wordmark}
         </span>
         <span className="hidden font-mono text-[10px] uppercase tracking-widest text-muted sm:inline">
-          debris decision support
+          {SITE.tagline}
         </span>
       </Link>
 
@@ -42,7 +43,7 @@ export function Header() {
           sys nominal
         </span>
         <span className="hidden md:inline">catalogue / 30 obj</span>
-        <span className="hidden lg:inline">src / simulated</span>
+        <span className="hidden lg:inline">src / {SITE.catalogSource}</span>
       </div>
     </header>
   );

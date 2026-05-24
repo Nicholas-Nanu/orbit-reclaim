@@ -3,6 +3,7 @@ import { Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { Header } from "@/components/Header";
 import { Sidebar } from "@/components/Sidebar";
+import { SITE } from "@/lib/site";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -16,10 +17,30 @@ const jetBrainsMono = JetBrains_Mono({
   display: "swap",
 });
 
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL
+  ? process.env.NEXT_PUBLIC_SITE_URL
+  : process.env.VERCEL_URL
+    ? `https://${process.env.VERCEL_URL}`
+    : "http://localhost:3000";
+
 export const metadata: Metadata = {
-  title: "Orbit Reclaim — Space Debris Decision Support",
-  description:
-    "Score, rank, and act on orbital debris across collision risk, compliance urgency, and salvage value.",
+  metadataBase: new URL(siteUrl),
+  title: {
+    default: `${SITE.name} — ${SITE.tagline}`,
+    template: `%s · ${SITE.name}`,
+  },
+  description: SITE.description,
+  openGraph: {
+    title: `${SITE.name} — ${SITE.tagline}`,
+    description: SITE.description,
+    siteName: SITE.name,
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: `${SITE.name} — ${SITE.tagline}`,
+    description: SITE.description,
+  },
 };
 
 export default function RootLayout({
