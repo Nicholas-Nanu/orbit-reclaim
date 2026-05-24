@@ -404,3 +404,11 @@ Selecting a hero draws its full orbit as a gold ring (`PolylineCollection`); des
 
 - `CesiumScene.tsx` — `drawOrbitFor`/`clearOrbit`; one full period sampled in ECI → ECEF with a **single** `gmst` snapshot (clean closed ring, not a ground track). Driven by a `selectedId` prop, so clicks, the close button, and filter-outs all keep the ring in sync.
 - `GlobeView.tsx` — `?sel=<noradId>` deep-link pre-selects an object on load (shareable; draws its orbit). Selection still primarily comes from clicking a hero.
+
+---
+
+## 15. Phase POLISH-3 — camera intro fly-in
+
+First `/globe` load plays a cinematic camera intro (distant Earth → glide-down → settle at a wide LEO oblique view, ~6s).
+
+- `CesiumScene.tsx` — `sessionStorage` flag `orbit-reclaim-intro-played` (once per tab; new tab replays). Camera inputs disabled during the intro; a "Skip intro" button cancels the flight and jumps to the final pose. Replaces the old `flyHome`.

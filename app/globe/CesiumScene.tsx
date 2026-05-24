@@ -23,6 +23,7 @@ import {
   PointPrimitiveCollection,
   PolylineCollection,
   Material,
+  Math as CesiumMath,
   type PointPrimitive,
   type Polyline,
 } from "cesium";
@@ -102,7 +103,9 @@ export default function CesiumScene({
   const cloudRef = useRef<PointPrimitiveCollection | null>(null);
   const drawOrbitRef = useRef<(obj: HeroObject) => void>(() => {});
   const clearOrbitRef = useRef<() => void>(() => {});
+  const skipIntroRef = useRef<() => void>(() => {});
   const [cloudCount, setCloudCount] = useState(0);
+  const [introPlaying, setIntroPlaying] = useState(false);
 
   // --- Mount once: build the viewer, heroes, and ambient cloud ---
   useEffect(() => {
@@ -301,7 +304,67 @@ export default function CesiumScene({
       }
     }, ScreenSpaceEventType.LEFT_CLICK);
 
-    viewer.camera.flyHome(0);
+    // --- Cinematic intro on first load (once per tab) ---
+    const INTRO_KEY = "orbit-reclaim-intro-played";
+    const shouldPlayIntro =
+      typeof window !== "undefined" && !sessionStorage.getItem(INTRO_KEY);
+    const finalView = {
+      destination: Cartesian3.fromDegrees(-60, 15, 12_000_000),
+      orientation: {
+        heading: CesiumMath.toRadians(45),
+        pitch: CesiumMath.toRadians(-25),
+        roll: 0,
+      },
+    };
+    const flyToAsync = (
+      options: Parameters<typeof viewer.camera.flyTo>[0],
+    ): Promise<void> =>
+      new Promise((resolve) => {
+        viewer.camera.flyTo({
+          ...options,
+          complete: () => resolve(),
+          cancel: () => resolve(),
+        });
+      });
+    const skipIntro = () => {
+      if (viewer.isDestroyed()) return;
+      viewer.camera.cancelFlight();
+      viewer.camera.setView(finalView);
+      viewer.scene.screenSpaceCameraController.enableInputs = true;
+      setIntroPlaying(false);
+    };
+    skipIntroRef.current = skipIntro;
+
+    if (shouldPlayIntro) {
+      setIntroPlaying(true);
+      sessionStorage.setItem(INTRO_KEY, "1");
+      viewer.scene.screenSpaceCameraController.enableInputs = false;
+      viewer.camera.setView({
+        destination: Cartesian3.fromDegrees(0, 90, 35_000_000),
+        orientation: { heading: 0, pitch: -CesiumMath.PI_OVER_TWO, roll: 0 },
+      });
+      (async () => {
+        await new Promise((r) => setTimeout(r, 200));
+        if (cancelled) return;
+        await flyToAsync({
+          destination: Cartesian3.fromDegrees(-30, 25, 18_000_000),
+          orientation: {
+            heading: CesiumMath.toRadians(20),
+            pitch: CesiumMath.toRadians(-35),
+            roll: 0,
+          },
+          duration: 3.5,
+        });
+        if (cancelled) return;
+        await flyToAsync({ ...finalView, duration: 2.5 });
+      })().finally(() => {
+        if (cancelled || viewer.isDestroyed()) return;
+        viewer.scene.screenSpaceCameraController.enableInputs = true;
+        setIntroPlaying(false);
+      });
+    } else {
+      viewer.camera.flyHome(0);
+    }
 
     return () => {
       cancelled = true;
@@ -344,6 +407,15 @@ export default function CesiumScene({
   return (
     <>
       <div ref={containerRef} className="absolute inset-0" />
+      {introPlaying && (
+        <button
+          type="button"
+          onClick={() => skipIntroRef.current()}
+          className="absolute bottom-20 left-1/2 z-20 -translate-x-1/2 rounded-sm border border-border bg-surface/90 px-4 py-1.5 font-mono text-[10px] uppercase tracking-widest text-muted backdrop-blur hover:text-text"
+        >
+          Skip intro →
+        </button>
+      )}
       {cloudCount > 0 && showAmbient && (
         <div className="pointer-events-none absolute bottom-16 right-4 z-10 font-mono text-[10px] uppercase tracking-wider text-muted">
           {cloudCount.toLocaleString()} objects in cloud
