@@ -412,3 +412,13 @@ Selecting a hero draws its full orbit as a gold ring (`PolylineCollection`); des
 First `/globe` load plays a cinematic camera intro (distant Earth → glide-down → settle at a wide LEO oblique view, ~6s).
 
 - `CesiumScene.tsx` — `sessionStorage` flag `orbit-reclaim-intro-played` (once per tab; new tab replays). Camera inputs disabled during the intro; a "Skip intro" button cancels the flight and jumps to the final pose. Replaces the old `flyHome`.
+
+---
+
+## 16. Phase POLISH-4 — featured-object auto-tour
+
+Unattended booth mode: cycles the camera through the visible heroes, drawing each one's orbit.
+
+- `app/globe/useCycler.ts` — state machine (`off`/`running`/`paused`); advances every 10s, pauses on pointer/key/wheel interaction, resumes after 30s idle.
+- `CesiumScene.tsx` exposes a `SceneApi` (`focusObject(id)` = select + orbit + camera fly; `clearFocus()`) via an `onReady` callback prop (avoids forwardRef across the `dynamic(ssr:false)` boundary).
+- `GlobeView.tsx` — "Auto-tour" toggle (bottom-left) with a status dot; composes POLISH-2 (orbit) + POLISH-3 (camera). Respects filters (tours only the visible set).

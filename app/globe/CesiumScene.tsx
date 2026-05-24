@@ -24,6 +24,7 @@ import {
   PolylineCollection,
   Material,
   Math as CesiumMath,
+  HeadingPitchRange,
   type PointPrimitive,
   type Polyline,
 } from "cesium";
@@ -47,6 +48,12 @@ type Props = {
   filterKey: string;
   selectedId: string | null;
   onSelect: (o: HeroObject | null) => void;
+  onReady?: (api: SceneApi) => void;
+};
+
+export type SceneApi = {
+  focusObject: (id: string) => void;
+  clearFocus: () => void;
 };
 
 type CloudTle = { id: string; l1: string; l2: string; t: string };
@@ -78,10 +85,13 @@ export default function CesiumScene({
   filterKey,
   selectedId,
   onSelect,
+  onReady,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const onSelectRef = useRef(onSelect);
   onSelectRef.current = onSelect;
+  const onReadyRef = useRef(onReady);
+  onReadyRef.current = onReady;
   const router = useRouter();
   const routerRef = useRef(router);
   routerRef.current = router;
@@ -365,6 +375,23 @@ export default function CesiumScene({
     } else {
       viewer.camera.flyHome(0);
     }
+
+    // --- Imperative API for the auto-tour cycler (POLISH-4) ---
+    onReadyRef.current?.({
+      focusObject: (id: string) => {
+        const hero = heroesRef.current.get(id);
+        if (!hero) return;
+        onSelectRef.current(hero.obj); // selection -> orbit ring via the selectedId effect
+        viewer.flyTo(hero.entity, {
+          duration: 1.5,
+          offset: new HeadingPitchRange(0, -Math.PI / 4, 8_000_000),
+        });
+      },
+      clearFocus: () => {
+        viewer.camera.cancelFlight();
+        onSelectRef.current(null);
+      },
+    });
 
     return () => {
       cancelled = true;

@@ -1,12 +1,14 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { ScoreBadge } from "@/components/ScoreBadge";
 import { FilterPanel } from "@/components/FilterPanel";
 import { parseFilters, matchesFilters } from "@/lib/catalog-filters";
+import { useCycler } from "./useCycler";
+import type { SceneApi } from "./CesiumScene";
 import type { HeroObject } from "./types";
 
 function GlobeLoading() {
@@ -133,6 +135,25 @@ export default function GlobeView({ objects }: { objects: HeroObject[] }) {
     if (selected && !visibleIds.includes(selected.id)) setSelected(null);
   }, [selected, visibleIds]);
 
+  // --- Auto-tour cycler (POLISH-4) ---
+  const sceneApiRef = useRef<SceneApi | null>(null);
+  const [cyclerOn, setCyclerOn] = useState(false);
+  const { state: cyclerState } = useCycler({
+    enabled: cyclerOn,
+    count: visible.length,
+    onAdvance: (i) => {
+      const o = visible[i];
+      if (o) sceneApiRef.current?.focusObject(o.id);
+    },
+  });
+  const toggleCycler = () => {
+    setCyclerOn((v) => {
+      const next = !v;
+      if (!next) sceneApiRef.current?.clearFocus();
+      return next;
+    });
+  };
+
   return (
     <div className="relative h-[calc(100vh-3.5rem)] w-full overflow-hidden bg-bg">
       <CesiumScene
@@ -143,6 +164,9 @@ export default function GlobeView({ objects }: { objects: HeroObject[] }) {
         filterKey={filterKey}
         selectedId={selected?.id ?? null}
         onSelect={setSelected}
+        onReady={(api) => {
+          sceneApiRef.current = api;
+        }}
       />
       <FilterPanel variant="globe" />
       <div className="pointer-events-none absolute right-4 top-4 z-10 text-right font-mono text-[10px] uppercase tracking-widest text-muted">
@@ -150,6 +174,40 @@ export default function GlobeView({ objects }: { objects: HeroObject[] }) {
         <br />
         drag to orbit · scroll to zoom
       </div>
+
+      <div className="absolute bottom-16 left-4 z-10 flex items-center gap-3 rounded-sm border border-border bg-surface/90 px-3 py-2 backdrop-blur">
+        <button
+          type="button"
+          onClick={toggleCycler}
+          className="flex items-center gap-2 font-mono text-[11px] uppercase tracking-wider text-text"
+        >
+          <span
+            className={`inline-block h-2 w-2 rounded-full ${
+              cyclerOn
+                ? cyclerState === "running"
+                  ? "animate-pulse bg-gold"
+                  : "bg-muted"
+                : "bg-border"
+            }`}
+          />
+          Auto-tour
+          {cyclerOn
+            ? cyclerState === "running"
+              ? " · playing"
+              : " · paused"
+            : " · off"}
+        </button>
+        {cyclerOn && (
+          <span className="font-mono text-[10px] uppercase tracking-wider text-muted">
+            {visible.length === 0
+              ? "no matches"
+              : cyclerState === "paused"
+                ? "resuming after idle…"
+                : `${visible.length} objects`}
+          </span>
+        )}
+      </div>
+
       {selected && <DetailPanel object={selected} onClose={() => setSelected(null)} />}
     </div>
   );
