@@ -48,6 +48,10 @@ export const debrisObjects = pgTable("debris_objects", {
   eccentricity: real("eccentricity").notNull().default(0),
   estimatedYearsToDecay: real("estimated_years_to_decay"),
 
+  // TLE lines (for client-side SGP4 propagation on the /globe view)
+  line1: text("line1"),
+  line2: text("line2"),
+
   // Mission
   missionStatus: text("mission_status").$type<MissionStatus>(),
   endOfLifeYear: integer("end_of_life_year"),

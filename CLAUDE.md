@@ -35,6 +35,7 @@
 | ORM | Drizzle | Lighter than Prisma, SQL-native, fast iteration. |
 | Charts | Recharts | Score breakdowns, distribution plots. |
 | Orbital data | Space-Track (full catalog) | ~34k real on-orbit objects via the Space-Track GP API, refreshed nightly by a Vercel cron. Physical attrs are heuristic estimates by object class (curated overrides for ~24 showcase objects). See §11. |
+| 3D globe | CesiumJS + Resium + `satellite.js` (v5) | `/globe` hero page; client-side SGP4 propagation. Needs `NEXT_PUBLIC_CESIUM_ION_TOKEN`. See §12. |
 | AI | `@anthropic-ai/sdk` → DeepSeek | Explanations use DeepSeek (`deepseek-v4-pro`) via its **Anthropic-compatible** endpoint (`https://api.deepseek.com/anthropic`). We keep the Anthropic SDK and just set `baseURL` + model, so no new deps. `ANTHROPIC_API_KEY` holds the DeepSeek key. Note: DeepSeek ignores `cache_control`, image/doc/tool content, and `anthropic-beta/version` headers — none of which we use. |
 | Deploy | Vercel | Free tier covers the demo. |
 
@@ -355,3 +356,21 @@ The catalogue is the **entire on-orbit catalog (~34k objects)** imported from Sp
 - `app/api/cron/refresh-catalog/route.ts` + `vercel.json` — nightly cron at 03:00 UTC. **Requires `CRON_SECRET` in Vercel** (the route enforces the Bearer token when set), plus `SPACETRACK_USER` / `SPACETRACK_PASS`.
 
 Physical/mission attrs (mass, material, status, conjunctions, neighbors, Δv) are estimates — a real source (e.g. DISCOSweb) is future work. Curated showcase objects live in `lib/data/curated.ts`.
+
+The catalogue also stores `line1`/`line2` (TLE) per object for the globe's client-side propagation.
+
+---
+
+## 12. Phase VIZ-1 — 3D globe (`/globe`)
+
+A CesiumJS hero page rendering the curated showcase objects as labeled, score-colored heroes animating along real orbits.
+
+- `app/globe/page.tsx` — server component; loads the curated objects (with `line1`/`line2` + cached scores).
+- `app/globe/GlobeView.tsx` — client wrapper; `dynamic(..., { ssr: false })` import of the scene + slide-in detail panel.
+- `app/globe/CesiumScene.tsx` — Cesium `Viewer` (dark/space-tuned), heroes via `SampledPositionProperty` (ECI/`INERTIAL`), score colors, click → select. Sets `window.CESIUM_BASE_URL='/cesium'` before use.
+- `scripts/copy-cesium.mjs` — copies Cesium static assets to `public/cesium` on `postinstall`/`predev`/`prebuild` (gitignored).
+- `next.config.mjs` — webpack `fs:false` fallback for the client bundle.
+- **`satellite.js` is pinned to v5** — v7's WASM build imports `node:worker_threads` and breaks browser bundling.
+- **Requires `NEXT_PUBLIC_CESIUM_ION_TOKEN`** (in `.env.local` and Vercel) for Earth imagery.
+
+VIZ-2 (the full ~34k point cloud via a Web Worker + `PointPrimitiveCollection`) is the planned next step.

@@ -129,6 +129,8 @@ export function mapToDebris(r: GpRecord): NewDebrisObject | null {
     neighborsWithin50km: curated?.neighborsWithin50km ?? Math.round(density * 25),
     deltaVToReachKms: curated?.deltaVToReachKms ?? deltaVFor(altitudeKm),
     catalogSource: "spacetrack" as const,
+    line1: r.TLE_LINE1,
+    line2: r.TLE_LINE2,
   };
 
   const scores = scoreObject(row);

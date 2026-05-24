@@ -10,6 +10,8 @@ export type GpRecord = {
   PERIAPSIS: string | null;
   INCLINATION: string | null;
   ECCENTRICITY: string | null;
+  TLE_LINE1: string | null;
+  TLE_LINE2: string | null;
 };
 
 async function login(): Promise<string> {
