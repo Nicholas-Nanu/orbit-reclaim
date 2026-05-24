@@ -21,10 +21,18 @@ import {
   Entity,
   ConstantProperty,
   PointPrimitiveCollection,
+  PolylineCollection,
+  Material,
   type PointPrimitive,
+  type Polyline,
 } from "cesium";
 import "cesium/Build/Cesium/Widgets/widgets.css";
-import { twoline2satrec, propagate as sgp4Propagate } from "satellite.js";
+import {
+  twoline2satrec,
+  propagate as sgp4Propagate,
+  eciToEcf,
+  gstime,
+} from "satellite.js";
 import type { ColorLens } from "@/lib/catalog-filters";
 import type { HeroObject } from "./types";
 
@@ -36,6 +44,7 @@ type Props = {
   colorLens: ColorLens;
   showAmbient: boolean;
   filterKey: string;
+  selectedId: string | null;
   onSelect: (o: HeroObject | null) => void;
 };
 
@@ -66,6 +75,7 @@ export default function CesiumScene({
   colorLens,
   showAmbient,
   filterKey,
+  selectedId,
   onSelect,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -90,6 +100,8 @@ export default function CesiumScene({
     new Map(),
   );
   const cloudRef = useRef<PointPrimitiveCollection | null>(null);
+  const drawOrbitRef = useRef<(obj: HeroObject) => void>(() => {});
+  const clearOrbitRef = useRef<() => void>(() => {});
   const [cloudCount, setCloudCount] = useState(0);
 
   // --- Mount once: build the viewer, heroes, and ambient cloud ---
@@ -233,6 +245,51 @@ export default function CesiumScene({
       }
     })();
 
+    // --- Selected-object orbit ring (one full period, single ECEF snapshot) ---
+    const orbitLines = viewer.scene.primitives.add(new PolylineCollection());
+    let currentOrbit: Polyline | null = null;
+    const clearOrbit = () => {
+      if (currentOrbit) {
+        orbitLines.remove(currentOrbit);
+        currentOrbit = null;
+        viewer.scene.requestRender();
+      }
+    };
+    const drawOrbitFor = (obj: HeroObject) => {
+      clearOrbit();
+      if (!obj.line1 || !obj.line2) return;
+      const satrec = twoline2satrec(obj.line1, obj.line2);
+      if (Number(satrec.error) !== 0) return;
+      const periodMin = (2 * Math.PI) / satrec.no;
+      if (!Number.isFinite(periodMin) || periodMin <= 0) return;
+      const startMs = Date.now();
+      const gmst = gstime(new Date(startMs)); // one rotation for the whole ring
+      const samples = 256;
+      const ring: Cartesian3[] = [];
+      for (let i = 0; i <= samples; i++) {
+        const r = sgp4Propagate(
+          satrec,
+          new Date(startMs + periodMin * 60_000 * (i / samples)),
+        );
+        if (r && r.position && typeof r.position !== "boolean") {
+          const e = eciToEcf(r.position, gmst);
+          ring.push(new Cartesian3(e.x * 1000, e.y * 1000, e.z * 1000));
+        }
+      }
+      if (ring.length < 2) return;
+      ring.push(ring[0]);
+      currentOrbit = orbitLines.add({
+        positions: ring,
+        width: 2.5,
+        material: Material.fromType("Color", {
+          color: Color.fromCssColorString("#ffe11f").withAlpha(0.75),
+        }),
+      });
+      viewer.scene.requestRender();
+    };
+    drawOrbitRef.current = drawOrbitFor;
+    clearOrbitRef.current = clearOrbit;
+
     viewer.screenSpaceEventHandler.setInputAction((click: { position: Cartesian2 }) => {
       const picked = viewer.scene.pick(click.position);
       if (picked && picked.id instanceof Entity) {
@@ -275,6 +332,14 @@ export default function CesiumScene({
     viewer.scene.requestRender();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filterKey, colorLens, showAmbient]);
+
+  // --- Draw the orbit ring for the selected hero (clear when deselected) ---
+  useEffect(() => {
+    if (!viewerRef.current) return;
+    const hero = selectedId ? heroesRef.current.get(selectedId) : undefined;
+    if (hero) drawOrbitRef.current(hero.obj);
+    else clearOrbitRef.current();
+  }, [selectedId]);
 
   return (
     <>

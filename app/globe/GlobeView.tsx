@@ -106,6 +106,17 @@ export default function GlobeView({ objects }: { objects: HeroObject[] }) {
   const searchParams = useSearchParams();
   const filterKey = searchParams.toString();
 
+  // Deep-link: ?sel=<noradId> pre-selects an object (shareable + draws its orbit).
+  useEffect(() => {
+    const sel = new URLSearchParams(window.location.search).get("sel");
+    if (sel) {
+      const o = objects.find((x) => x.id === sel);
+      if (o) setSelected(o);
+    }
+    // run once on mount
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const filters = useMemo(
     () => parseFilters(Object.fromEntries(searchParams.entries())),
     [searchParams],
@@ -130,6 +141,7 @@ export default function GlobeView({ objects }: { objects: HeroObject[] }) {
         colorLens={filters.colorLens}
         showAmbient={filters.showAmbient}
         filterKey={filterKey}
+        selectedId={selected?.id ?? null}
         onSelect={setSelected}
       />
       <FilterPanel variant="globe" />

@@ -395,3 +395,12 @@ Filters live in URL search params, shared by `/` and `/globe`, so they persist a
 - `components/Sidebar.tsx` — nav links carry the current `?query` across views (view switcher).
 - `app/globe/GlobeView.tsx` reads the URL filters; `CesiumScene` is built **once** and a separate effect toggles entity visibility/color + cloud `.show` on filter change — never recreates the Viewer.
 - Note: `Sidebar` uses `useSearchParams`, so it's wrapped in `<Suspense>` in `app/layout.tsx` (required for the static `/about` + 404 pages).
+
+---
+
+## 14. Phase POLISH-2 — selected-object orbit ring
+
+Selecting a hero draws its full orbit as a gold ring (`PolylineCollection`); deselecting clears it.
+
+- `CesiumScene.tsx` — `drawOrbitFor`/`clearOrbit`; one full period sampled in ECI → ECEF with a **single** `gmst` snapshot (clean closed ring, not a ground track). Driven by a `selectedId` prop, so clicks, the close button, and filter-outs all keep the ring in sync.
+- `GlobeView.tsx` — `?sel=<noradId>` deep-link pre-selects an object on load (shareable; draws its orbit). Selection still primarily comes from clicking a hero.
