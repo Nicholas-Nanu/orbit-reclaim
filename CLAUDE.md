@@ -34,7 +34,7 @@
 | DB | Postgres (Supabase hosted) | Using Supabase (Postgres) via its connected MCP instead of Neon — same Postgres, already wired into this workspace. Project: `orbit-reclaim`, ref `czjibddehtncwrxmbuwa`, region `eu-west-1`. Schema + seed applied via the MCP (`apply_migration` / `execute_sql`); `npm run db:push`/`db:seed` work locally once `DATABASE_URL` has the DB password. |
 | ORM | Drizzle | Lighter than Prisma, SQL-native, fast iteration. |
 | Charts | Recharts | Score breakdowns, distribution plots. |
-| AI | `@anthropic-ai/sdk` | Claude Sonnet 4.5 for explanations. |
+| AI | `@anthropic-ai/sdk` → DeepSeek | Explanations use DeepSeek (`deepseek-v4-pro`) via its **Anthropic-compatible** endpoint (`https://api.deepseek.com/anthropic`). We keep the Anthropic SDK and just set `baseURL` + model, so no new deps. `ANTHROPIC_API_KEY` holds the DeepSeek key. Note: DeepSeek ignores `cache_control`, image/doc/tool content, and `anthropic-beta/version` headers — none of which we use. |
 | Deploy | Vercel | Free tier covers the demo. |
 
 **Do not add:** auth, payments, websockets, Redis, Stripe, anything not in the table above. Resist scope creep — this is a pitch tool.
@@ -299,7 +299,7 @@ The route loads the object(s), runs the scoring, and calls Claude with a system 
 
 **Streaming:** use the SDK's streaming API and render tokens as they arrive. The `ExplainPanel` component should show a typewriter effect over the dark background — feels appropriately mission-control.
 
-**Model:** `claude-sonnet-4-5` (latest). Keep responses to ~200 words max via system prompt.
+**Model:** `deepseek-v4-pro` via DeepSeek's Anthropic-compatible endpoint (overrides the original Claude choice — see §2). Configured with `ANTHROPIC_BASE_URL=https://api.deepseek.com/anthropic`. Keep responses to ~200 words max via system prompt.
 
 **Cost guard:** cache explanations by `(objectId, mode, persona)` in memory (no DB) for the session.
 

@@ -6,6 +6,7 @@ import { debrisObjects } from "@/lib/db/schema";
 import { scoreObject } from "@/lib/scoring";
 import { ScoreBreakdown } from "@/components/ScoreBreakdown";
 import { ScoreBadge } from "@/components/ScoreBadge";
+import { ExplainPanel } from "@/components/ExplainPanel";
 
 export const dynamic = "force-dynamic";
 
@@ -107,6 +108,11 @@ export default async function DebrisDetailPage({
         <ScoreBreakdown title="Collision Risk" result={scores.collisionRisk} />
         <ScoreBreakdown title="Compliance Urgency" result={scores.compliance} />
         <ScoreBreakdown title="Salvage Value" result={scores.salvage} />
+      </div>
+
+      {/* AI briefing */}
+      <div className="mt-6">
+        <ExplainPanel objectId={obj.id} />
       </div>
     </div>
   );
