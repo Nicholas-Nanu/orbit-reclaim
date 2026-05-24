@@ -20,6 +20,7 @@ export type CatalogRow = {
 type SortKey = keyof CatalogRow;
 type SortDir = "asc" | "desc";
 
+const MAX_COMPARE = 3;
 const TYPE_LABEL = new Map<string, string>(TYPES.map((t) => [t.key, t.label]));
 
 const COLUMNS: {
@@ -43,6 +44,7 @@ export function DebrisTable({ rows }: { rows: CatalogRow[] }) {
   const router = useRouter();
   const [sortKey, setSortKey] = useState<SortKey>("composite");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
+  const [selected, setSelected] = useState<Set<string>>(new Set());
 
   const sorted = useMemo(() => {
     const copy = [...rows];
@@ -62,81 +64,147 @@ export function DebrisTable({ rows }: { rows: CatalogRow[] }) {
       setSortDir((d) => (d === "asc" ? "desc" : "asc"));
     } else {
       setSortKey(key);
-      // Numeric columns are most useful highest-first; text ascending.
       setSortDir(numeric ? "desc" : "asc");
     }
   }
 
+  function toggleSelect(id: string) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else if (next.size < MAX_COMPARE) next.add(id);
+      return next;
+    });
+  }
+
+  const canCompare = selected.size >= 2 && selected.size <= MAX_COMPARE;
+
+  function compare() {
+    if (!canCompare) return;
+    router.push(`/compare?ids=${Array.from(selected).join(",")}`);
+  }
+
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full border-collapse text-sm">
-        <thead>
-          <tr className="border-b border-border">
-            {COLUMNS.map((col) => {
-              const active = col.key === sortKey;
+    <div className="flex h-full flex-col">
+      <div className="flex items-center justify-between gap-3 px-2 pb-2">
+        <span className="font-mono text-[10px] uppercase tracking-wider text-muted">
+          {selected.size > 0
+            ? `${selected.size} selected (max ${MAX_COMPARE})`
+            : "Select 2–3 rows to compare"}
+        </span>
+        <div className="flex items-center gap-2">
+          {selected.size > 0 && (
+            <button
+              type="button"
+              onClick={() => setSelected(new Set())}
+              className="font-mono text-[10px] uppercase tracking-wider text-muted hover:text-text"
+            >
+              Clear
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={compare}
+            disabled={!canCompare}
+            className="rounded-sm border border-gold bg-gold/10 px-3 py-1 font-mono text-[10px] uppercase tracking-wider text-gold transition-colors hover:bg-gold/20 disabled:cursor-not-allowed disabled:border-border disabled:bg-transparent disabled:text-muted"
+          >
+            Compare selected
+          </button>
+        </div>
+      </div>
+
+      <div className="min-h-0 flex-1 overflow-auto">
+        <table className="w-full border-collapse text-sm">
+          <thead className="sticky top-0 bg-bg">
+            <tr className="border-b border-border">
+              <th className="w-8 px-3 py-2 text-left font-mono text-[10px] uppercase tracking-wider text-muted">
+                Cmp
+              </th>
+              {COLUMNS.map((col) => {
+                const active = col.key === sortKey;
+                return (
+                  <th
+                    key={col.key}
+                    onClick={() => toggleSort(col.key, col.numeric)}
+                    className={`cursor-pointer select-none whitespace-nowrap px-3 py-2 font-mono text-[10px] uppercase tracking-wider ${
+                      col.align === "right" ? "text-right" : "text-left"
+                    } ${active ? "text-gold" : "text-muted"} hover:text-text`}
+                  >
+                    {col.label}
+                    <span className="ml-1 inline-block w-2">
+                      {active ? (sortDir === "asc" ? "▲" : "▼") : ""}
+                    </span>
+                  </th>
+                );
+              })}
+            </tr>
+          </thead>
+          <tbody>
+            {sorted.map((row) => {
+              const isSelected = selected.has(row.id);
+              const disabled = !isSelected && selected.size >= MAX_COMPARE;
               return (
-                <th
-                  key={col.key}
-                  onClick={() => toggleSort(col.key, col.numeric)}
-                  className={`cursor-pointer select-none whitespace-nowrap px-3 py-2 font-mono text-[10px] uppercase tracking-wider ${
-                    col.align === "right" ? "text-right" : "text-left"
-                  } ${active ? "text-gold" : "text-muted"} hover:text-text`}
+                <tr
+                  key={row.id}
+                  onClick={() => router.push(`/debris/${row.id}`)}
+                  className={`cursor-pointer border-b border-border/60 transition-colors hover:bg-surface ${
+                    isSelected ? "bg-surface" : ""
+                  }`}
                 >
-                  {col.label}
-                  <span className="ml-1 inline-block w-2">
-                    {active ? (sortDir === "asc" ? "▲" : "▼") : ""}
-                  </span>
-                </th>
+                  <td
+                    className="px-3 py-2"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      disabled={disabled}
+                      onChange={() => toggleSelect(row.id)}
+                      aria-label={`Select ${row.name} to compare`}
+                      className="h-3.5 w-3.5 accent-gold disabled:opacity-30"
+                    />
+                  </td>
+                  <td className="px-3 py-2 font-mono text-xs text-muted">
+                    {row.id}
+                  </td>
+                  <td className="px-3 py-2 font-medium">{row.name}</td>
+                  <td className="px-3 py-2 font-mono text-[11px] uppercase tracking-wide text-muted">
+                    {TYPE_LABEL.get(row.type) ?? row.type}
+                  </td>
+                  <td className="px-3 py-2 text-right font-mono tabular-nums">
+                    {row.altitudeKm.toLocaleString()}
+                  </td>
+                  <td className="px-3 py-2 text-right font-mono tabular-nums">
+                    {row.inclinationDeg.toFixed(1)}
+                  </td>
+                  <td className="px-3 py-2 text-right">
+                    <ScoreBadge score={row.collision} />
+                  </td>
+                  <td className="px-3 py-2 text-right">
+                    <ScoreBadge score={row.compliance} />
+                  </td>
+                  <td className="px-3 py-2 text-right">
+                    <ScoreBadge score={row.salvage} />
+                  </td>
+                  <td className="px-3 py-2 text-right">
+                    <ScoreBadge score={row.composite} emphasis />
+                  </td>
+                </tr>
               );
             })}
-          </tr>
-        </thead>
-        <tbody>
-          {sorted.map((row) => (
-            <tr
-              key={row.id}
-              onClick={() => router.push(`/debris/${row.id}`)}
-              className="cursor-pointer border-b border-border/60 transition-colors hover:bg-surface"
-            >
-              <td className="px-3 py-2 font-mono text-xs text-muted">
-                {row.id}
-              </td>
-              <td className="px-3 py-2 font-medium">{row.name}</td>
-              <td className="px-3 py-2 font-mono text-[11px] uppercase tracking-wide text-muted">
-                {TYPE_LABEL.get(row.type) ?? row.type}
-              </td>
-              <td className="px-3 py-2 text-right font-mono tabular-nums">
-                {row.altitudeKm.toLocaleString()}
-              </td>
-              <td className="px-3 py-2 text-right font-mono tabular-nums">
-                {row.inclinationDeg.toFixed(1)}
-              </td>
-              <td className="px-3 py-2 text-right">
-                <ScoreBadge score={row.collision} />
-              </td>
-              <td className="px-3 py-2 text-right">
-                <ScoreBadge score={row.compliance} />
-              </td>
-              <td className="px-3 py-2 text-right">
-                <ScoreBadge score={row.salvage} />
-              </td>
-              <td className="px-3 py-2 text-right">
-                <ScoreBadge score={row.composite} emphasis />
-              </td>
-            </tr>
-          ))}
-          {sorted.length === 0 && (
-            <tr>
-              <td
-                colSpan={COLUMNS.length}
-                className="px-3 py-12 text-center font-mono text-xs uppercase tracking-wider text-muted"
-              >
-                No objects match the current filters
-              </td>
-            </tr>
-          )}
-        </tbody>
-      </table>
+            {sorted.length === 0 && (
+              <tr>
+                <td
+                  colSpan={COLUMNS.length + 1}
+                  className="px-3 py-12 text-center font-mono text-xs uppercase tracking-wider text-muted"
+                >
+                  No objects match the current filters
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

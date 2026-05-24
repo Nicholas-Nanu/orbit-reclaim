@@ -13,10 +13,8 @@ const PERSONAS: { key: Persona; label: string }[] = [
 
 type Status = "idle" | "loading" | "streaming" | "done" | "error";
 
-// Session cache by (objectId, mode, persona) — CLAUDE.md §7 cost guard.
+// Session cache by (target, mode, persona) — CLAUDE.md §7 cost guard.
 const cache = new Map<string, string>();
-const cacheKey = (objectId: string, persona: Persona) =>
-  `${objectId}|persona_brief|${persona}`;
 
 function Spinner() {
   return (
@@ -29,7 +27,19 @@ function Spinner() {
   );
 }
 
-export function ExplainPanel({ objectId }: { objectId: string }) {
+type Props =
+  | { objectId: string; comparisonIds?: undefined }
+  | { comparisonIds: string[]; objectId?: undefined };
+
+export function ExplainPanel(props: Props) {
+  const isComparison = Array.isArray(props.comparisonIds);
+  const target = isComparison
+    ? (props.comparisonIds as string[]).join(",")
+    : (props.objectId as string);
+  const mode = isComparison ? "comparison" : "persona_brief";
+  const title = isComparison ? "AI Comparison" : "AI Briefing";
+  const cta = isComparison ? "Compare these objects" : "Explain this score";
+
   const [persona, setPersona] = useState<Persona>("operator");
   const [text, setText] = useState("");
   const [status, setStatus] = useState<Status>("idle");
@@ -38,7 +48,7 @@ export function ExplainPanel({ objectId }: { objectId: string }) {
 
   const generate = useCallback(
     async (p: Persona) => {
-      const key = cacheKey(objectId, p);
+      const key = `${target}|${mode}|${p}`;
       const cached = cache.get(key);
       if (cached) {
         setText(cached);
@@ -56,14 +66,14 @@ export function ExplainPanel({ objectId }: { objectId: string }) {
       setStatus("loading");
 
       try {
+        const body = isComparison
+          ? { mode, comparisonIds: props.comparisonIds, persona: p }
+          : { mode, objectId: props.objectId, persona: p };
+
         const res = await fetch("/api/explain", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            objectId,
-            mode: "persona_brief",
-            persona: p,
-          }),
+          body: JSON.stringify(body),
           signal: controller.signal,
         });
 
@@ -95,13 +105,12 @@ export function ExplainPanel({ objectId }: { objectId: string }) {
         setStatus("error");
       }
     },
-    [objectId],
+    [target, mode, isComparison, props.comparisonIds, props.objectId],
   );
 
   const selectPersona = useCallback(
     (p: Persona) => {
       setPersona(p);
-      // Once activated, switching persona regenerates (or shows cache).
       if (status !== "idle") generate(p);
     },
     [status, generate],
@@ -113,7 +122,7 @@ export function ExplainPanel({ objectId }: { objectId: string }) {
     <div className="rounded-sm border border-border bg-surface">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-3">
         <h3 className="font-mono text-xs uppercase tracking-widest text-muted">
-          AI Briefing
+          {title}
         </h3>
         <div className="flex gap-1">
           {PERSONAS.map((pp) => (
@@ -141,7 +150,7 @@ export function ExplainPanel({ objectId }: { objectId: string }) {
             onClick={() => generate(persona)}
             className="rounded-sm border border-gold bg-gold/10 px-3 py-1.5 font-mono text-xs uppercase tracking-wider text-gold transition-colors hover:bg-gold/20"
           >
-            Explain this score
+            {cta}
           </button>
         )}
 

@@ -48,7 +48,7 @@ export default async function DashboardPage({
             {rows.length} / {all.length} objects
           </span>
         </div>
-        <div className="min-h-0 flex-1 overflow-auto px-2 py-2">
+        <div className="min-h-0 flex-1 px-2 py-2">
           <DebrisTable rows={rows} />
         </div>
       </section>
