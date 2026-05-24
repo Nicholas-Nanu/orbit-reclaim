@@ -8,6 +8,12 @@ if (!connectionString) {
   throw new Error("DATABASE_URL is not set. Add it to .env.local.");
 }
 
-const pool = new Pool({ connectionString });
+// Supabase requires TLS; enable it for supabase hosts.
+const useSsl = /supabase\.(co|com)/.test(connectionString);
+
+const pool = new Pool({
+  connectionString,
+  ssl: useSsl ? { rejectUnauthorized: false } : undefined,
+});
 
 export const db = drizzle(pool, { schema });

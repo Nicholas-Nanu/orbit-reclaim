@@ -1,11 +1,8 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { config } from "dotenv";
 import { z } from "zod";
 import { db } from "./client";
 import { debrisObjects } from "./schema";
-
-config({ path: ".env.local" });
 
 const debrisType = z.enum([
   "rocket_body",
