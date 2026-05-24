@@ -42,7 +42,7 @@ export function Header() {
           <span className="inline-block h-1.5 w-1.5 rounded-full bg-gold" />
           sys nominal
         </span>
-        <span className="hidden md:inline">catalogue / 30 obj</span>
+        <span className="hidden md:inline">catalogue / live</span>
         <span className="hidden lg:inline">src / {SITE.catalogSource}</span>
       </div>
     </header>

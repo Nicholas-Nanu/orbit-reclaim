@@ -21,6 +21,11 @@ export type MaterialClass =
   | "mixed"
   | "unknown";
 export type MissionStatus = "active" | "defunct" | "unknown";
+export type CatalogSource =
+  | "simulated"
+  | "celestrak"
+  | "spacetrack"
+  | "esa_discos";
 
 export const debrisObjects = pgTable("debris_objects", {
   // Identity
@@ -55,8 +60,18 @@ export const debrisObjects = pgTable("debris_objects", {
   deltaVToReachKms: real("delta_v_to_reach_kms"),
 
   // Source
-  catalogSource: text("catalog_source").notNull().default("simulated"),
+  catalogSource: text("catalog_source")
+    .$type<CatalogSource>()
+    .notNull()
+    .default("simulated"),
   lastUpdated: timestamp("last_updated").defaultNow(),
+
+  // Cached scores (denormalized for DB-side sort/filter/paginate at catalog scale).
+  // Authoritative breakdowns are still computed on the fly on detail/compare pages.
+  collisionRisk: real("collision_risk"),
+  compliance: real("compliance"),
+  salvage: real("salvage"),
+  composite: real("composite"),
 });
 
 export type DebrisObject = typeof debrisObjects.$inferSelect;

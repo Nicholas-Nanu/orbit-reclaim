@@ -1,9 +1,4 @@
-import type {
-  DebrisObject,
-  DebrisType,
-  Jurisdiction,
-  MissionStatus,
-} from "@/lib/db/schema";
+import type { DebrisType, Jurisdiction } from "@/lib/db/schema";
 
 export const ALTITUDE_BANDS = [
   { key: "leo-low", label: "< 500 km", min: 0, max: 500 },
@@ -64,30 +59,6 @@ export function parseFilters(params: RawParams): CatalogFilters {
     type: list(params.type),
     status: status && status !== "all" ? status : "all",
   };
-}
-
-function inSelectedBand(altitudeKm: number, keys: string[]): boolean {
-  return keys.some((key) => {
-    const band = ALTITUDE_BANDS.find((b) => b.key === key);
-    return band ? altitudeKm >= band.min && altitudeKm < band.max : false;
-  });
-}
-
-export function applyFilters(
-  rows: DebrisObject[],
-  f: CatalogFilters,
-): DebrisObject[] {
-  return rows.filter((row) => {
-    if (f.alt.length && !inSelectedBand(row.altitudeKm, f.alt)) return false;
-    if (f.jur.length && !(row.jurisdiction && f.jur.includes(row.jurisdiction)))
-      return false;
-    if (f.type.length && !f.type.includes(row.type)) return false;
-    if (f.status !== "all") {
-      const status: MissionStatus = row.missionStatus ?? "unknown";
-      if (status !== f.status) return false;
-    }
-    return true;
-  });
 }
 
 export function activeFilterCount(f: CatalogFilters): number {

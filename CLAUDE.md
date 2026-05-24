@@ -34,6 +34,7 @@
 | DB | Postgres (Supabase hosted) | Using Supabase (Postgres) via its connected MCP instead of Neon — same Postgres, already wired into this workspace. Project: `orbit-reclaim`, ref `czjibddehtncwrxmbuwa`, region `eu-west-1`. Schema + seed applied via the MCP (`apply_migration` / `execute_sql`); `npm run db:push`/`db:seed` work locally once `DATABASE_URL` has the DB password. |
 | ORM | Drizzle | Lighter than Prisma, SQL-native, fast iteration. |
 | Charts | Recharts | Score breakdowns, distribution plots. |
+| Orbital data | Space-Track (full catalog) | ~34k real on-orbit objects via the Space-Track GP API, refreshed nightly by a Vercel cron. Physical attrs are heuristic estimates by object class (curated overrides for ~24 showcase objects). See §11. |
 | AI | `@anthropic-ai/sdk` → DeepSeek | Explanations use DeepSeek (`deepseek-v4-pro`) via its **Anthropic-compatible** endpoint (`https://api.deepseek.com/anthropic`). We keep the Anthropic SDK and just set `baseURL` + model, so no new deps. `ANTHROPIC_API_KEY` holds the DeepSeek key. Note: DeepSeek ignores `cache_control`, image/doc/tool content, and `anthropic-beta/version` headers — none of which we use. |
 | Deploy | Vercel | Free tier covers the demo. |
 
@@ -129,9 +130,12 @@ type DebrisType = 'rocket_body' | 'defunct_satellite' | 'fragment' | 'mission_de
 type Jurisdiction = 'US' | 'ESA' | 'JP' | 'CN' | 'RU' | 'IN' | 'OTHER';
 type MaterialClass = 'al_li_alloy' | 'titanium' | 'comsat_electronics' | 'eo_satellite' | 'mixed' | 'unknown';
 type MissionStatus = 'active' | 'defunct' | 'unknown';
+type CatalogSource = 'simulated' | 'celestrak' | 'spacetrack' | 'esa_discos';
 ```
 
-**Scores are not stored.** They are computed on the fly from the row + the formulas in §5. This keeps weightings tweakable without migrations.
+**The catalogue is the full real catalog (Phase A.2):** ~34k on-orbit objects imported from **Space-Track** (`catalogSource='spacetrack'`). Identity (NORAD id + name), `OBJECT_TYPE`, `COUNTRY_CODE`, and orbit (mean altitude from APOAPSIS/PERIAPSIS, inclination, eccentricity) are real. Physical/mission attrs (mass/material/intact/conjunctions/neighbors/Δv) are heuristic estimates by object class, with hand-curated overrides for ~24 showcase objects (`lib/data/curated.ts`). See §11.
+
+**Scores ARE cached (changed from the original spec).** At catalog scale, computing+sorting scores for ~34k rows per request is infeasible, so `collision_risk/compliance/salvage/composite` are stored at import/refresh time and the catalogue sorts/filters/paginates on them in the DB. The authoritative `ScoreResult` breakdowns are still computed on the fly on the detail and compare pages (single objects), keeping the scoring logic in one place. Recompute the cache by re-running the import after a weight change. They are computed on the fly from the row + the formulas in §5. This keeps weightings tweakable without migrations.
 
 ---
 
@@ -329,10 +333,25 @@ The route loads the object(s), runs the scoring, and calls Claude with a system 
 
 ## 10. Definition of done for MVP
 
-- [ ] Catalogue page loads in <1 s with 30+ seeded objects, sortable on all three scores.
-- [ ] Filter panel narrows by altitude band, jurisdiction, type, mission status.
-- [ ] Object detail page shows all orbital params, all three score breakdowns with visible weights, and an AI-generated brief.
-- [ ] AI explanation streams in <3 s to first token.
-- [ ] Scoring tests pass.
-- [ ] Deployed to Vercel with a shareable URL.
-- [ ] Brand: a non-engineer looking at it for 5 s says "this looks like space-tech."
+- [x] Catalogue loads the full real catalog (~34k objects), paginated, sortable on all scores.
+- [x] Filter panel narrows by altitude band, jurisdiction, type, mission status (DB-side).
+- [x] Object detail page shows all orbital params, all three score breakdowns with visible weights, and an AI-generated brief.
+- [ ] AI explanation streams in <3 s to first token. *(deepseek-v4-pro reasons first; ~20–60s. Switch `AI_MODEL=deepseek-v4-flash` for speed.)*
+- [x] Scoring tests pass.
+- [x] Deployed to Vercel with a shareable URL (https://orbit-reclaim.vercel.app/).
+- [x] Brand: a non-engineer looking at it for 5 s says "this looks like space-tech."
+- [x] Catalogue is the live full Space-Track catalog (nightly refresh) — see §11.
+
+---
+
+## 11. Phase A.2 — full live catalog (Space-Track)
+
+The catalogue is the **entire on-orbit catalog (~34k objects)** imported from Space-Track. Identity, type, country, and orbit are real; physical attrs are heuristic by class with curated overrides.
+
+- `lib/data/spacetrack.ts` — authenticated client; one bulk GP query (`decay_date=null`).
+- `lib/data/catalog-map.ts` — `GpRecord` → scored row: heuristic physicals by `OBJECT_TYPE`, jurisdiction from `COUNTRY_CODE`, mean altitude from APOAPSIS/PERIAPSIS; applies `lib/data/curated.ts` overrides for showcase objects; computes + caches scores.
+- `lib/data/catalog-import.ts` + `scripts/import-catalog.ts` + `npm run import:catalog` — fetch → map → atomic replace (delete+insert in one transaction). Idempotent; this is also the refresh.
+- `lib/db/catalog-query.ts` — DB-side paginate/sort/filter on cached score columns (`PAGE_SIZE=50`).
+- `app/api/cron/refresh-catalog/route.ts` + `vercel.json` — nightly cron at 03:00 UTC. **Requires `CRON_SECRET` in Vercel** (the route enforces the Bearer token when set), plus `SPACETRACK_USER` / `SPACETRACK_PASS`.
+
+Physical/mission attrs (mass, material, status, conjunctions, neighbors, Δv) are estimates — a real source (e.g. DISCOSweb) is future work. Curated showcase objects live in `lib/data/curated.ts`.

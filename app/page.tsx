@@ -1,7 +1,11 @@
-import { db } from "@/lib/db/client";
-import { debrisObjects } from "@/lib/db/schema";
-import { scoreObject } from "@/lib/scoring";
-import { applyFilters, parseFilters } from "@/lib/catalog-filters";
+import { parseFilters } from "@/lib/catalog-filters";
+import {
+  queryCatalog,
+  PAGE_SIZE,
+  isSortKey,
+  type SortKey,
+  type SortDir,
+} from "@/lib/db/catalog-query";
 import { DebrisTable, type CatalogRow } from "@/components/DebrisTable";
 import { FilterPanel } from "@/components/FilterPanel";
 
@@ -14,24 +18,17 @@ export default async function DashboardPage({
 }: {
   searchParams: SearchParams;
 }) {
-  const all = await db.select().from(debrisObjects);
   const filters = parseFilters(searchParams);
-  const filtered = applyFilters(all, filters);
+  const sortParam = Array.isArray(searchParams.sort)
+    ? searchParams.sort[0]
+    : searchParams.sort;
+  const sortKey: SortKey =
+    sortParam && isSortKey(sortParam) ? sortParam : "composite";
+  const sortDir: SortDir = searchParams.dir === "asc" ? "asc" : "desc";
+  const page = Math.max(1, Number(searchParams.page) || 1);
 
-  const rows: CatalogRow[] = filtered.map((o) => {
-    const s = scoreObject(o);
-    return {
-      id: o.id,
-      name: o.name,
-      type: o.type,
-      altitudeKm: o.altitudeKm,
-      inclinationDeg: o.inclinationDeg,
-      collision: s.collisionRisk.score,
-      compliance: s.compliance.score,
-      salvage: s.salvage.score,
-      composite: s.composite,
-    };
-  });
+  const { rows, total } = await queryCatalog(filters, sortKey, sortDir, page);
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   return (
     <div className="flex h-full">
@@ -45,11 +42,18 @@ export default async function DashboardPage({
             </p>
           </div>
           <span className="font-mono text-xs uppercase tracking-wider text-muted">
-            {rows.length} / {all.length} objects
+            {total.toLocaleString()} objects
           </span>
         </div>
         <div className="min-h-0 flex-1 px-2 py-2">
-          <DebrisTable rows={rows} />
+          <DebrisTable
+            rows={rows as CatalogRow[]}
+            sortKey={sortKey}
+            sortDir={sortDir}
+            page={page}
+            totalPages={totalPages}
+            total={total}
+          />
         </div>
       </section>
     </div>

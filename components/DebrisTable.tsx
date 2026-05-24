@@ -1,7 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useCallback, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { ScoreBadge } from "./ScoreBadge";
 import { TYPES } from "@/lib/catalog-filters";
 
@@ -17,8 +17,16 @@ export type CatalogRow = {
   composite: number;
 };
 
-type SortKey = keyof CatalogRow;
-type SortDir = "asc" | "desc";
+type SortKey =
+  | "id"
+  | "name"
+  | "type"
+  | "altitudeKm"
+  | "inclinationDeg"
+  | "collision"
+  | "compliance"
+  | "salvage"
+  | "composite";
 
 const MAX_COMPARE = 3;
 const TYPE_LABEL = new Map<string, string>(TYPES.map((t) => [t.key, t.label]));
@@ -40,32 +48,53 @@ const COLUMNS: {
   { key: "composite", label: "Composite", numeric: true, align: "right" },
 ];
 
-export function DebrisTable({ rows }: { rows: CatalogRow[] }) {
+export function DebrisTable({
+  rows,
+  sortKey,
+  sortDir,
+  page,
+  totalPages,
+  total,
+}: {
+  rows: CatalogRow[];
+  sortKey: SortKey;
+  sortDir: "asc" | "desc";
+  page: number;
+  totalPages: number;
+  total: number;
+}) {
   const router = useRouter();
-  const [sortKey, setSortKey] = useState<SortKey>("composite");
-  const [sortDir, setSortDir] = useState<SortDir>("desc");
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
-  const sorted = useMemo(() => {
-    const copy = [...rows];
-    copy.sort((a, b) => {
-      const av = a[sortKey];
-      const bv = b[sortKey];
-      let cmp: number;
-      if (typeof av === "number" && typeof bv === "number") cmp = av - bv;
-      else cmp = String(av).localeCompare(String(bv));
-      return sortDir === "asc" ? cmp : -cmp;
-    });
-    return copy;
-  }, [rows, sortKey, sortDir]);
+  const pushParams = useCallback(
+    (mutate: (p: URLSearchParams) => void) => {
+      const p = new URLSearchParams(searchParams.toString());
+      mutate(p);
+      const qs = p.toString();
+      router.push(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+    },
+    [router, pathname, searchParams],
+  );
 
   function toggleSort(key: SortKey, numeric: boolean) {
-    if (key === sortKey) {
-      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
-    } else {
-      setSortKey(key);
-      setSortDir(numeric ? "desc" : "asc");
-    }
+    pushParams((p) => {
+      if (key === sortKey) {
+        p.set("dir", sortDir === "asc" ? "desc" : "asc");
+      } else {
+        p.set("sort", key);
+        p.set("dir", numeric ? "desc" : "asc");
+      }
+      p.delete("page");
+    });
+  }
+
+  function goToPage(n: number) {
+    pushParams((p) => {
+      if (n <= 1) p.delete("page");
+      else p.set("page", String(n));
+    });
   }
 
   function toggleSelect(id: string) {
@@ -140,7 +169,7 @@ export function DebrisTable({ rows }: { rows: CatalogRow[] }) {
             </tr>
           </thead>
           <tbody>
-            {sorted.map((row) => {
+            {rows.map((row) => {
               const isSelected = selected.has(row.id);
               const disabled = !isSelected && selected.size >= MAX_COMPARE;
               return (
@@ -151,10 +180,7 @@ export function DebrisTable({ rows }: { rows: CatalogRow[] }) {
                     isSelected ? "bg-surface" : ""
                   }`}
                 >
-                  <td
-                    className="px-3 py-2"
-                    onClick={(e) => e.stopPropagation()}
-                  >
+                  <td className="px-3 py-2" onClick={(e) => e.stopPropagation()}>
                     <input
                       type="checkbox"
                       checked={isSelected}
@@ -164,15 +190,13 @@ export function DebrisTable({ rows }: { rows: CatalogRow[] }) {
                       className="h-3.5 w-3.5 accent-gold disabled:opacity-30"
                     />
                   </td>
-                  <td className="px-3 py-2 font-mono text-xs text-muted">
-                    {row.id}
-                  </td>
+                  <td className="px-3 py-2 font-mono text-xs text-muted">{row.id}</td>
                   <td className="px-3 py-2 font-medium">{row.name}</td>
                   <td className="px-3 py-2 font-mono text-[11px] uppercase tracking-wide text-muted">
                     {TYPE_LABEL.get(row.type) ?? row.type}
                   </td>
                   <td className="px-3 py-2 text-right font-mono tabular-nums">
-                    {row.altitudeKm.toLocaleString()}
+                    {Math.round(row.altitudeKm).toLocaleString()}
                   </td>
                   <td className="px-3 py-2 text-right font-mono tabular-nums">
                     {row.inclinationDeg.toFixed(1)}
@@ -192,7 +216,7 @@ export function DebrisTable({ rows }: { rows: CatalogRow[] }) {
                 </tr>
               );
             })}
-            {sorted.length === 0 && (
+            {rows.length === 0 && (
               <tr>
                 <td
                   colSpan={COLUMNS.length + 1}
@@ -204,6 +228,30 @@ export function DebrisTable({ rows }: { rows: CatalogRow[] }) {
             )}
           </tbody>
         </table>
+      </div>
+
+      <div className="flex items-center justify-between border-t border-border px-3 py-2 font-mono text-[11px] uppercase tracking-wider text-muted">
+        <span>
+          Page {page} / {totalPages} · {total.toLocaleString()} objects
+        </span>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={() => goToPage(page - 1)}
+            disabled={page <= 1}
+            className="rounded-sm border border-border px-2 py-1 hover:text-text disabled:opacity-30"
+          >
+            ← Prev
+          </button>
+          <button
+            type="button"
+            onClick={() => goToPage(page + 1)}
+            disabled={page >= totalPages}
+            className="rounded-sm border border-border px-2 py-1 hover:text-text disabled:opacity-30"
+          >
+            Next →
+          </button>
+        </div>
       </div>
     </div>
   );

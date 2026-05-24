@@ -79,6 +79,7 @@ export function FilterPanel() {
       else set.add(value);
       if (set.size) params.set(key, Array.from(set).join(","));
       else params.delete(key);
+      params.delete("page"); // changing filters returns to page 1
       commit(params);
     },
     [searchParams, current, commit],
@@ -89,6 +90,7 @@ export function FilterPanel() {
       const params = new URLSearchParams(searchParams.toString());
       if (value === "all") params.delete("status");
       else params.set("status", value);
+      params.delete("page");
       commit(params);
     },
     [searchParams, commit],
