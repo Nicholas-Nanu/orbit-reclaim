@@ -1,61 +1,39 @@
-import { parseFilters } from "@/lib/catalog-filters";
-import {
-  queryCatalog,
-  PAGE_SIZE,
-  isSortKey,
-  type SortKey,
-  type SortDir,
-} from "@/lib/db/catalog-query";
-import { DebrisTable, type CatalogRow } from "@/components/DebrisTable";
-import { FilterPanel } from "@/components/FilterPanel";
+import { getHomeAggregate } from "@/lib/home/aggregate";
+import { getDailyBrief } from "@/lib/home/brief";
+import HomeHero from "@/components/home/HomeHero";
+import ScaleSection from "@/components/home/ScaleSection";
+import LensCards from "@/components/home/LensCards";
+import FeaturedObject from "@/components/home/FeaturedObject";
+import DailyBriefPanel from "@/components/home/DailyBriefPanel";
+import PersonaShowcase from "@/components/home/PersonaShowcase";
+import TrustSignals from "@/components/home/TrustSignals";
+import HomeFooter from "@/components/home/HomeFooter";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 600; // 10 min — keep stats fresh-ish
 
-type SearchParams = { [key: string]: string | string[] | undefined };
+export default async function HomePage() {
+  const aggregate = await getHomeAggregate();
+  const brief = await getDailyBrief();
 
-export default async function DashboardPage({
-  searchParams,
-}: {
-  searchParams: SearchParams;
-}) {
-  const filters = parseFilters(searchParams);
-  const sortParam = Array.isArray(searchParams.sort)
-    ? searchParams.sort[0]
-    : searchParams.sort;
-  const sortKey: SortKey =
-    sortParam && isSortKey(sortParam) ? sortParam : "composite";
-  const sortDir: SortDir = searchParams.dir === "asc" ? "asc" : "desc";
-  const page = Math.max(1, Number(searchParams.page) || 1);
-
-  const { rows, total } = await queryCatalog(filters, sortKey, sortDir, page);
-  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const featured = aggregate.featured;
+  const firstBody = brief?.items?.[0]?.body ?? "";
+  const whyText =
+    featured && firstBody.includes(featured.object.name)
+      ? firstBody
+      : featured
+        ? `Highest composite score in the catalogue at ${featured.scores.composite.toFixed(1)} — a ${featured.object.type.replace(/_/g, " ")} that scores across collision risk, regulatory exposure, and salvage economics simultaneously.`
+        : "";
 
   return (
-    <div className="flex h-full">
-      <FilterPanel />
-      <section className="flex min-w-0 flex-1 flex-col">
-        <div className="flex items-baseline justify-between border-b border-border px-6 py-4">
-          <div>
-            <h1 className="text-xl font-semibold tracking-tight">Catalogue</h1>
-            <p className="mt-1 font-mono text-xs uppercase tracking-wider text-muted">
-              Collision risk · Compliance urgency · Salvage value
-            </p>
-          </div>
-          <span className="font-mono text-xs uppercase tracking-wider text-muted">
-            {total.toLocaleString()} objects
-          </span>
-        </div>
-        <div className="min-h-0 flex-1 px-2 py-2">
-          <DebrisTable
-            rows={rows as CatalogRow[]}
-            sortKey={sortKey}
-            sortDir={sortDir}
-            page={page}
-            totalPages={totalPages}
-            total={total}
-          />
-        </div>
-      </section>
+    <div className="bg-bg text-text">
+      <HomeHero />
+      <ScaleSection aggregate={aggregate} />
+      <LensCards aggregate={aggregate} />
+      <FeaturedObject featured={featured} whyText={whyText} />
+      <DailyBriefPanel brief={brief} />
+      <PersonaShowcase />
+      <TrustSignals />
+      <HomeFooter />
     </div>
   );
 }

@@ -4,7 +4,8 @@ import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 
 const NAV = [
-  { href: "/", label: "Dashboard", glyph: "▦" },
+  { href: "/", label: "Home", glyph: "⌂" },
+  { href: "/catalog", label: "Catalog", glyph: "▦" },
   { href: "/globe", label: "Globe", glyph: "◉" },
   { href: "/compare", label: "Compare", glyph: "⇄" },
   { href: "/methodology", label: "Methodology", glyph: "§" },

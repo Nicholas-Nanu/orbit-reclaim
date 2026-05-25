@@ -91,3 +91,18 @@ export const debrisObjects = pgTable("debris_objects", {
 
 export type DebrisObject = typeof debrisObjects.$inferSelect;
 export type NewDebrisObject = typeof debrisObjects.$inferInsert;
+
+/**
+ * Vercel-safe cache for AI artifacts (daily brief, etc.). The serverless
+ * filesystem is read-only at runtime and there's no shared in-memory cache, so
+ * anything we'd otherwise persist to disk goes here: read → check `cachedAt`
+ * freshness → recompute on miss → upsert (CLAUDE.md §2 caching pattern).
+ */
+export const aiCache = pgTable("ai_cache", {
+  cacheKey: text("cache_key").primaryKey(),
+  content: text("content").notNull(), // JSON-serialized payload
+  modelVersion: text("model_version"),
+  cachedAt: timestamp("cached_at").notNull().defaultNow(),
+});
+
+export type AiCacheRow = typeof aiCache.$inferSelect;

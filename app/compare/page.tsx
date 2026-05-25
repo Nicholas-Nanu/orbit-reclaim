@@ -86,7 +86,7 @@ export default async function ComparePage({
     return (
       <div className="px-8 py-6">
         <Link
-          href="/"
+          href="/catalog"
           className="font-mono text-xs uppercase tracking-wider text-goldDim hover:text-gold"
         >
           ← Catalogue
@@ -127,7 +127,7 @@ export default async function ComparePage({
   return (
     <div className="px-8 py-6">
       <Link
-        href="/"
+        href="/catalog"
         className="font-mono text-xs uppercase tracking-wider text-goldDim hover:text-gold"
       >
         ← Catalogue
